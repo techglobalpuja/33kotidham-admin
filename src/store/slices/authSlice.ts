@@ -1,6 +1,23 @@
 import { createSlice, PayloadAction, createAsyncThunk } from '@reduxjs/toolkit';
-import { AuthState, User } from '@/types';
-import { apiService } from '@/services/api';
+import { axiosInstance } from '@/services/apiConfig';
+
+// Define User and AuthState types
+export interface User {
+  id?: string;
+  name?: string;
+  email?: string | null;
+  mobile?: string;
+  role?: string;
+  access_token?: string;
+  token_type?: string;
+  isAuthenticated?: boolean;
+}
+
+export interface AuthState {
+  user: User | null;
+  isLoading: boolean;
+  error: string | null;
+}
 
 const initialState: AuthState = {
   user: null,
@@ -8,14 +25,46 @@ const initialState: AuthState = {
   error: null,
 };
 
+// Async thunk for signup
 export const signupUser = createAsyncThunk(
   'auth/signup',
-  async ({ name, email, mobile, password }: { name: string; email: string; mobile: string; password: string }, { rejectWithValue }) => {
+  async (
+    { name, email, mobile, role, password }: { name: string; email: string | null; mobile: string; role: string; password: string | null },
+    { rejectWithValue }
+  ) => {
     try {
-      const user = await apiService.signup(name, email, mobile, password);
-      return user;
-    } catch (error) {
-      return rejectWithValue(error instanceof Error ? error.message : 'Signup failed');
+      const response = await axiosInstance.post('/api/v1/auth/create-admin', {
+        name,
+        email,
+        mobile,
+        role,
+        password,
+      });
+      return response?.data as User;
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || error.message);
+    }
+  }
+);
+
+// Async thunk for admin login
+export const adminLogin = createAsyncThunk(
+  'auth/adminLogin',
+  async (
+    {
+      username,
+      password,
+    }: { username: string; password: string;},
+    { rejectWithValue }
+  ) => {
+    try {
+      const response = await axiosInstance.post('/api/v1/auth/admin-login', {
+        username,
+        password,
+      });
+      return response?.data as User;
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || error.message);
     }
   }
 );
@@ -23,35 +72,9 @@ export const signupUser = createAsyncThunk(
 const authSlice = createSlice({
   name: 'auth',
   initialState,
-  reducers: {
-    loginStart: (state) => {
-      state.isLoading = true;
-      state.error = null;
-    },
-    loginSuccess: (state, action: PayloadAction<User>) => {
-      state.isLoading = false;
-      state.user = action.payload;
-      state.error = null;
-    },
-    loginFailure: (state, action: PayloadAction<string>) => {
-      state.isLoading = false;
-      state.error = action.payload;
-    },
-    logout: (state) => {
-      state.user = null;
-      state.error = null;
-      
-      // Clear auth token from localStorage
-      if (typeof window !== 'undefined') {
-        localStorage.removeItem('auth_token');
-        localStorage.removeItem('token_type');
-      }
-    },
-    clearError: (state) => {
-      state.error = null;
-    },
-  },
+  reducers: {},
   extraReducers: (builder) => {
+    // Signup cases
     builder
       .addCase(signupUser.pending, (state) => {
         state.isLoading = true;
@@ -61,14 +84,36 @@ const authSlice = createSlice({
         state.isLoading = false;
         state.user = { ...action.payload, isAuthenticated: true };
         state.error = null;
+
+        // Store auth token in localStorage
+        if (typeof window !== 'undefined' && action.payload.access_token && action.payload.token_type) {
+          localStorage.setItem('token', action.payload.access_token);
+        }
       })
       .addCase(signupUser.rejected, (state, action) => {
         state.isLoading = false;
         state.error = action.payload as string;
-      });
-  }
-});
+      })
+      // Admin login cases
+      .addCase(adminLogin.pending, (state) => {
+        state.isLoading = true;
+        state.error = null;
+      })
+      .addCase(adminLogin.fulfilled, (state, action: PayloadAction<User>) => {
+        state.isLoading = false;
+        state.user = { ...action.payload, isAuthenticated: true };
+        state.error = null;
 
-export const { loginStart, loginSuccess, loginFailure, logout, clearError } = authSlice.actions;
+        // Store auth token in localStorage
+        if (typeof window !== 'undefined' && action.payload.access_token && action.payload.token_type) {
+          localStorage.setItem('token', action.payload.access_token);
+        }
+      })
+      .addCase(adminLogin.rejected, (state, action) => {
+        state.isLoading = false;
+        state.error = action.payload as string;
+      });
+  },
+});
 
 export default authSlice.reducer;

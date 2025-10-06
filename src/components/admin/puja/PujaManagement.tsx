@@ -1,13 +1,21 @@
 'use client';
 
 import React, { useState } from 'react';
+import { useDispatch } from 'react-redux';
+import { fetchPujas } from '@/store/slices/pujaSlice';
 import Button from '@/components/ui/Button';
 import PujaList from './components/PujaList';
-import PujaForm from './components/PujaForm';
+import PujaForm from './components/CreatePujaForm';
 
 const PujaManagement: React.FC = () => {
+  const dispatch = useDispatch();
   const [activeSubTab, setActiveSubTab] = useState<'all' | 'add'>('all');
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
+
+  const handleCreateSuccess = () => {
+    setActiveSubTab('all');
+    dispatch(fetchPujas());
+  };
 
   return (
     <div className="space-y-6">
@@ -108,7 +116,7 @@ const PujaManagement: React.FC = () => {
               <h2 className="text-xl font-semibold text-gray-900 font-['Philosopher']">Create New Puja</h2>
               <p className="text-sm text-gray-600 mt-1">Complete puja setup with all required details</p>
             </div>
-            <PujaForm />
+            <PujaForm onSuccess={handleCreateSuccess} />
           </div>
         )}
       </div>

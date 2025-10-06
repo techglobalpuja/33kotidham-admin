@@ -1,10 +1,9 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useDispatch, useSelector } from 'react-redux';
-import { RootState } from '@/store';
-import { fetchPujaById, updatePuja } from '@/store/slices/pujaSlice';
+import { useDispatch } from 'react-redux';
+import { createPuja } from '@/store/slices/pujaSlice';
 import { Form, Input, Button, Checkbox, Select, Typography } from 'antd';
 import { useDropzone } from 'react-dropzone';
 
@@ -39,16 +38,14 @@ interface PujaFormData {
   isFeatured: boolean;
 }
 
-interface UpdatePujaFormProps {
-  pujaId: string;
+interface CreatePujaFormProps {
   onSuccess?: () => void;
 }
 
-const UpdatePujaForm: React.FC<UpdatePujaFormProps> = ({ pujaId, onSuccess }) => {
+const CreatePujaForm: React.FC<CreatePujaFormProps> = ({ onSuccess }) => {
   const router = useRouter();
   const dispatch = useDispatch();
   const [form] = Form.useForm();
-  const selectedPuja = useSelector((state: RootState) => state.puja.selectedPuja);
   const [formData, setFormData] = useState<PujaFormData>({
     pujaName: '',
     subHeading: '',
@@ -76,44 +73,6 @@ const UpdatePujaForm: React.FC<UpdatePujaFormProps> = ({ pujaId, onSuccess }) =>
     isActive: true,
     isFeatured: false,
   });
-
-  useEffect(() => {
-    if (pujaId) {
-      dispatch(fetchPujaById(pujaId));
-    }
-  }, [pujaId, dispatch]);
-
-  useEffect(() => {
-    if (selectedPuja) {
-      setFormData({
-        pujaName: selectedPuja.name ?? '',
-        subHeading: selectedPuja.sub_heading ?? '',
-        about: selectedPuja.description ?? '',
-        pujaImages: selectedPuja.puja_images ?? [],
-        templeImage: selectedPuja.temple_image_url ?? '',
-        templeAddress: selectedPuja.temple_address ?? '',
-        templeDescription: selectedPuja.temple_description ?? '',
-        benefits: selectedPuja.benefits ?? [
-          { title: '', description: '' },
-          { title: '', description: '' },
-          { title: '', description: '' },
-          { title: '', description: '' },
-        ],
-        selectedPlanIds: selectedPuja.selected_plan_ids ?? [],
-        prasadPrice: selectedPuja.prasad_price ?? 0,
-        prasadStatus: selectedPuja.is_prasad_active ?? false,
-        dakshinaPrices: selectedPuja.dakshina_prices_inr ?? '',
-        dakshinaPricesUSD: selectedPuja.dakshina_prices_usd ?? '',
-        dakshinaStatus: selectedPuja.is_dakshina_active ?? false,
-        manokamnaPrices: selectedPuja.manokamna_prices_inr ?? '',
-        manokamnaPricesUSD: selectedPuja.manokamna_prices_usd ?? '',
-        manokamnaStatus: selectedPuja.is_manokamna_active ?? false,
-        category: selectedPuja.category ?? 'general',
-        isActive: selectedPuja.is_active ?? true,
-        isFeatured: selectedPuja.is_featured ?? false,
-      });
-    }
-  }, [selectedPuja]);
 
   // Dropzone for Puja Images
   const { getRootProps: getPujaRootProps, getInputProps: getPujaInputProps } = useDropzone({
@@ -169,12 +128,8 @@ const UpdatePujaForm: React.FC<UpdatePujaFormProps> = ({ pujaId, onSuccess }) =>
         manokamna_prices_usd: formData.manokamnaPricesUSD ?? '',
         is_manokamna_active: formData.manokamnaStatus ?? false,
         category: formData.category ?? 'general',
-        is_active: formData.isActive ?? true,
-        is_featured: formData.isFeatured ?? false,
-        benefits: formData.benefits ?? [],
-        selected_plan_ids: formData.selectedPlanIds ?? [],
       };
-      await dispatch(updatePuja({ id: pujaId, ...requestData }));
+      await dispatch(createPuja(requestData));
       onSuccess?.();
     } catch (error) {
       // Errors not handled via Redux state as per request
@@ -607,7 +562,7 @@ const UpdatePujaForm: React.FC<UpdatePujaFormProps> = ({ pujaId, onSuccess }) =>
             htmlType="submit"
             className="bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white px-8 py-3 rounded-lg font-medium border-none"
           >
-            Update Puja
+            Create Puja
           </Button>
           <Button
             type="default"
@@ -651,4 +606,4 @@ const UpdatePujaForm: React.FC<UpdatePujaFormProps> = ({ pujaId, onSuccess }) =>
   );
 };
 
-export default UpdatePujaForm;
+export default CreatePujaForm;

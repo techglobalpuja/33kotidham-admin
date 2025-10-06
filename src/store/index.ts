@@ -1,21 +1,18 @@
+// store/index.ts
 import { configureStore } from '@reduxjs/toolkit';
-import authReducer from './slices/authSlice';
-import uiReducer from './slices/uiSlice';
-import pujaReducer from './slices/pujaSlice';
+import authReducer from '@/store/slices/authSlice';
+import pujaReducer from '@/store/slices/pujaSlice';
 
-export const store = configureStore({
+const store = configureStore({
   reducer: {
     auth: authReducer,
-    ui: uiReducer,
     puja: pujaReducer,
   },
-  middleware: (getDefaultMiddleware) =>
-    getDefaultMiddleware({
-      serializableCheck: {
-        ignoredActions: ['persist/PERSIST'],
-      },
-    }),
 });
 
+// Export the store
+export default store;
+
+// Export types for TypeScript
 export type RootState = ReturnType<typeof store.getState>;
 export type AppDispatch = typeof store.dispatch;
