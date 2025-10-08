@@ -2,6 +2,11 @@ import { createSlice, PayloadAction, createAsyncThunk } from '@reduxjs/toolkit';
 import { axiosInstance } from '@/services/apiConfig';
 
 // Define Puja type
+export interface Benefit {
+  title: string;
+  description: string;
+}
+
 export interface Puja {
   id: string;
   name: string;
@@ -26,6 +31,8 @@ export interface Puja {
   puja_images?: string[];
   created_date?: string;
   selected_plan?: string;
+  benefits?: Benefit[];
+  selected_plan_ids?: string[];
 }
 
 // Define PujaState type
@@ -85,7 +92,30 @@ export const fetchPujaById = createAsyncThunk(
 // Async thunk for updating a puja
 export const updatePuja = createAsyncThunk(
   'puja/updatePuja',
-  async (updateData: { id: string; name: string; sub_heading: string; description: string; date: string | null; time: string | null; temple_image_url: string; temple_address: string; temple_description: string; prasad_price: number; is_prasad_active: boolean; dakshina_prices_inr: string; dakshina_prices_usd: string; is_dakshina_active: boolean; manokamna_prices_inr: string; manokamna_prices_usd: string; is_manokamna_active: boolean; category: string; }, { rejectWithValue }) => {
+  async (updateData: { 
+    id: string; 
+    name: string; 
+    sub_heading: string; 
+    description: string; 
+    date: string | null; 
+    time: string | null; 
+    temple_image_url: string; 
+    temple_address: string; 
+    temple_description: string; 
+    prasad_price: number; 
+    is_prasad_active: boolean; 
+    dakshina_prices_inr: string; 
+    dakshina_prices_usd: string; 
+    is_dakshina_active: boolean; 
+    manokamna_prices_inr: string; 
+    manokamna_prices_usd: string; 
+    is_manokamna_active: boolean; 
+    category: string;
+    is_active: boolean;
+    is_featured: boolean;
+    benefits: Benefit[];
+    selected_plan_ids: string[];
+  }, { rejectWithValue }) => {
     try {
       const { id, ...pujaData } = updateData;
       const response = await axiosInstance.put(`/api/v1/pujas/${id}`, pujaData);

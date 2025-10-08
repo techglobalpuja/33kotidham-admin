@@ -49,3 +49,10 @@ export const isAuthenticated = (): boolean => {
   const { token } = getAuthToken();
   return !!token;
 };
+
+/**
+ * Check if user has admin role
+ */
+export const isAdmin = (user: any): boolean => {
+  return user && user.role === 'admin';
+};

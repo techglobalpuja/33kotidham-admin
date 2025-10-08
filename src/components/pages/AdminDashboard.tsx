@@ -13,6 +13,7 @@ import OrdersManagement from '@/components/admin/orders/OrdersManagement';
 import ContentManagement from '@/components/admin/content/ContentManagement';
 import BlogManagement from '@/components/admin/blog/BlogManagement';
 import AnalyticsTab from '@/components/admin/analytics/AnalyticsTab';
+import { useRequireAuth } from '@/hooks/useAuth';
 
 interface AdminDashboardProps {
   // Add props here if needed in the future
@@ -20,7 +21,13 @@ interface AdminDashboardProps {
 }
 
 const AdminDashboard: React.FC<AdminDashboardProps> = () => {
+  const { isAuthenticated, user } = useRequireAuth();
   const [activeTab, setActiveTab] = useState('overview');
+
+  // If not authenticated, don't render the dashboard
+  if (!isAuthenticated) {
+    return null;
+  }
 
   // Mock admin stats data
   const adminStats: AdminStats = {

@@ -1,5 +1,6 @@
 import { createSlice, PayloadAction, createAsyncThunk } from '@reduxjs/toolkit';
 import { axiosInstance } from '@/services/apiConfig';
+import { storeAuthToken, getAuthToken, clearAuthToken } from '@/utils/auth';
 
 // Define User and AuthState types
 export interface User {
@@ -24,6 +25,15 @@ const initialState: AuthState = {
   isLoading: false,
   error: null,
 };
+
+// Check if user is already authenticated on initial load
+const { token } = getAuthToken();
+if (token) {
+  // If token exists, set user as authenticated
+  initialState.user = {
+    isAuthenticated: true
+  } as User;
+}
 
 // Async thunk for signup
 export const signupUser = createAsyncThunk(
@@ -69,10 +79,37 @@ export const adminLogin = createAsyncThunk(
   }
 );
 
+// Async thunk for logout
+export const adminLogout = createAsyncThunk(
+  'auth/adminLogout',
+  async (_, { rejectWithValue }) => {
+    try {
+      // Clear token from localStorage
+      clearAuthToken();
+      return true;
+    } catch (error: any) {
+      return rejectWithValue(error.message);
+    }
+  }
+);
+
 const authSlice = createSlice({
   name: 'auth',
   initialState,
-  reducers: {},
+  reducers: {
+    // Reset error state
+    resetError: (state) => {
+      state.error = null;
+    },
+    // Set user manually (for initial auth check)
+    setUser: (state, action: PayloadAction<User>) => {
+      state.user = action.payload;
+    },
+    // Clear user (for logout)
+    clearUser: (state) => {
+      state.user = null;
+    }
+  },
   extraReducers: (builder) => {
     // Signup cases
     builder
@@ -86,8 +123,8 @@ const authSlice = createSlice({
         state.error = null;
 
         // Store auth token in localStorage
-        if (typeof window !== 'undefined' && action.payload.access_token && action.payload.token_type) {
-          localStorage.setItem('token', action.payload.access_token);
+        if (action.payload.access_token && action.payload.token_type) {
+          storeAuthToken(action.payload.access_token, action.payload.token_type);
         }
       })
       .addCase(signupUser.rejected, (state, action) => {
@@ -105,15 +142,23 @@ const authSlice = createSlice({
         state.error = null;
 
         // Store auth token in localStorage
-        if (typeof window !== 'undefined' && action.payload.access_token && action.payload.token_type) {
-          localStorage.setItem('token', action.payload.access_token);
+        if (action.payload.access_token && action.payload.token_type) {
+          storeAuthToken(action.payload.access_token, action.payload.token_type);
         }
       })
       .addCase(adminLogin.rejected, (state, action) => {
         state.isLoading = false;
         state.error = action.payload as string;
+      })
+      // Admin logout cases
+      .addCase(adminLogout.fulfilled, (state) => {
+        state.user = null;
+      })
+      .addCase(adminLogout.rejected, (state) => {
+        state.user = null;
       });
   },
 });
 
+export const { resetError, setUser, clearUser } = authSlice.actions;
 export default authSlice.reducer;

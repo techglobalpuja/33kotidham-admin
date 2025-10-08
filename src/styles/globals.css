@@ -6,6 +6,8 @@
   --foreground-rgb: 0, 0, 0;
   --background-start-rgb: 214, 219, 220;
   --background-end-rgb: 255, 255, 255;
+  --orange-primary: 249, 115, 22;
+  --orange-secondary: 242, 98, 14;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -24,10 +26,94 @@ body {
       rgb(var(--background-end-rgb))
     )
     rgb(var(--background-start-rgb));
+  font-family: 'Inter', sans-serif;
+}
+
+/* Custom styles for admin panel */
+.admin-gradient-bg {
+  background: linear-gradient(135deg, #fff8f0 0%, #ffeee0 100%);
+}
+
+.admin-card {
+  backdrop-filter: blur(10px);
+  background: rgba(255, 255, 255, 0.7);
+  border: 1px solid rgba(var(--orange-primary), 0.2);
+}
+
+.admin-button-primary {
+  background: linear-gradient(135deg, rgb(var(--orange-primary)) 0%, rgb(var(--orange-secondary)) 100%);
+  border: none;
+  color: white;
+  transition: all 0.3s ease;
+}
+
+.admin-button-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(var(--orange-primary), 0.3);
+}
+
+.admin-input {
+  background: rgba(255, 255, 255, 0.5);
+  border: 1px solid rgba(var(--orange-primary), 0.2);
+}
+
+.admin-input:focus {
+  border-color: rgb(var(--orange-primary));
+  box-shadow: 0 0 0 2px rgba(var(--orange-primary), 0.2);
+}
+
+/* Custom styles for Puja Update Modal */
+.admin-puja-modal .ant-modal-content {
+  border-radius: 1rem;
+  overflow: hidden;
+}
+
+.admin-puja-modal .ant-modal-header {
+  background: linear-gradient(135deg, #fff8f0 0%, #ffeee0 100%);
+  border-bottom: 1px solid rgba(var(--orange-primary), 0.2);
+  padding: 1rem 1.5rem;
+}
+
+.admin-puja-modal .ant-modal-title {
+  color: #333;
+  font-weight: 600;
+}
+
+.admin-puja-modal .ant-modal-close {
+  top: 1rem;
+  right: 1rem;
+}
+
+.admin-puja-modal .ant-modal-close-x {
+  width: 2.5rem;
+  height: 2.5rem;
+  line-height: 2.5rem;
+}
+
+.admin-puja-modal .ant-modal-body {
+  padding: 1.5rem;
+}
+
+.admin-puja-modal .ant-modal-footer {
+  border-top: 1px solid rgba(var(--orange-primary), 0.2);
+  padding: 1rem 1.5rem;
 }
 
 @layer utilities {
   .text-balance {
     text-wrap: balance;
+  }
+  
+  /* Custom utility classes */
+  .shadow-soft {
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+  }
+  
+  .shadow-soft-lg {
+    box-shadow: 0 8px 26px rgba(0, 0, 0, 0.08);
+  }
+  
+  .shadow-soft-xl {
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
   }
 }
