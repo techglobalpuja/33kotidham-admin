@@ -5,51 +5,67 @@ import { useDispatch, useSelector } from 'react-redux';
 import { Modal, Form, Input, Button, Checkbox, Select, Typography, Row, Col } from 'antd';
 import { useDropzone } from 'react-dropzone';
 import { RootState } from '@/store';
-import { fetchPujaById, updatePuja } from '@/store/slices/pujaSlice';
+import { fetchPujaById, updatePuja, uploadPujaImages } from '@/store/slices/pujaSlice';
+import { AppDispatch } from '@/store';
 
 const { Text } = Typography;
 const { Option } = Select;
 
 interface Benefit {
-  title: string;
-  description: string;
+  title?: string | null;
+  description?: string | null;
 }
 
 interface PujaFormData {
-  pujaName: string;
-  subHeading: string;
-  about: string;
-  pujaImages: string[];
-  templeImage: string;
-  templeAddress: string;
-  templeDescription: string;
-  benefits: Benefit[];
-  selectedPlanIds: string[];
-  prasadPrice: number;
-  prasadStatus: boolean;
-  dakshinaPrices: string;
-  dakshinaPricesUSD: string;
-  dakshinaStatus: boolean;
-  manokamnaPrices: string;
-  manokamnaPricesUSD: string;
-  manokamnaStatus: boolean;
-  category: string;
-  isActive: boolean;
-  isFeatured: boolean;
+  pujaName?: string | null;
+  subHeading?: string | null;
+  about?: string | null;
+  pujaImages?: File[] | null;
+  templeImage?: string | null;
+  templeAddress?: string | null;
+  templeDescription?: string | null;
+  benefits?: Benefit[] | null;
+  selectedPlanIds?: string[] | null;
+  prasadPrice?: number | null;
+  prasadStatus?: boolean | null;
+  dakshinaPrices?: string | null;
+  dakshinaPricesUSD?: string | null;
+  dakshinaStatus?: boolean | null;
+  manokamnaPrices?: string | null;
+  manokamnaPricesUSD?: string | null;
+  manokamnaStatus?: boolean | null;
+  category?: string | null;
+  isActive?: boolean | null;
+  isFeatured?: boolean | null;
 }
 
 interface UpdatePujaModalProps {
-  pujaId: string;
-  visible: boolean;
-  onCancel: () => void;
+  pujaId?: string | null;
+  visible?: boolean;
+  pujaData?: any; // Data passed from parent
+  onCancel?: () => void;
   onSuccess?: () => void;
 }
 
-const UpdatePujaModal: React.FC<UpdatePujaModalProps> = ({ pujaId, visible, onCancel, onSuccess }) => {
-  const dispatch = useDispatch();
+const UpdatePujaModal: React.FC<UpdatePujaModalProps> = ({ 
+  pujaId, 
+  visible, 
+  pujaData,
+  onCancel, 
+  onSuccess
+}) => {
+  console.log("UpdatePujaModal rendered with:", { pujaId, visible, pujaData });
+  
+  // Early validation and safety checks
+  const safePujaId = (pujaId ?? '').toString().trim();
+  const isVisible = Boolean(visible ?? false);
+  const safeOnCancel = onCancel ?? (() => {});
+  const safeOnSuccess = onSuccess ?? (() => {});
+  
+  const dispatch = useDispatch<AppDispatch>();
+  // Track if images have been changed
+  const [imagesChanged, setImagesChanged] = useState(false);
   const [form] = Form.useForm();
-  const selectedPuja = useSelector((state: RootState) => state.puja.selectedPuja);
-  const isLoading = useSelector((state: RootState) => state.puja.isLoading);
   const [formData, setFormData] = useState<PujaFormData>({
     pujaName: '',
     subHeading: '',
@@ -78,115 +94,330 @@ const UpdatePujaModal: React.FC<UpdatePujaModalProps> = ({ pujaId, visible, onCa
     isFeatured: false,
   });
 
+  // Effect to populate form when pujaData is received
   useEffect(() => {
-    if (pujaId && visible) {
-      dispatch(fetchPujaById(pujaId) as any);
-    }
-  }, [pujaId, visible, dispatch]);
+    if (pujaData && typeof pujaData === 'object' && isVisible) {
+      try {
+        console.log('UpdatePujaModal - Setting form data from props:', pujaData);
+        
+        // Safe data extraction with comprehensive null handling
+        const safeBenefits = Array.isArray(pujaData.benefits) 
+          ? pujaData.benefits.map((benefit: any) => ({
+              title: (benefit?.title ?? '').toString().trim(),
+              description: (benefit?.description ?? '').toString().trim()
+            }))
+          : [
+              { title: '', description: '' },
+              { title: '', description: '' },
+              { title: '', description: '' },
+              { title: '', description: '' },
+            ];
 
-  useEffect(() => {
-    if (selectedPuja && visible && pujaId) {
-      setFormData({
-        pujaName: selectedPuja.name ?? '',
-        subHeading: selectedPuja.sub_heading ?? '',
-        about: selectedPuja.description ?? '',
-        pujaImages: selectedPuja.puja_images ?? [],
-        templeImage: selectedPuja.temple_image_url ?? '',
-        templeAddress: selectedPuja.temple_address ?? '',
-        templeDescription: selectedPuja.temple_description ?? '',
-        benefits: selectedPuja.benefits ?? [
-          { title: '', description: '' },
-          { title: '', description: '' },
-          { title: '', description: '' },
-          { title: '', description: '' },
-        ],
-        selectedPlanIds: selectedPuja.selected_plan_ids ?? [],
-        prasadPrice: selectedPuja.prasad_price ?? 0,
-        prasadStatus: selectedPuja.is_prasad_active ?? false,
-        dakshinaPrices: selectedPuja.dakshina_prices_inr ?? '',
-        dakshinaPricesUSD: selectedPuja.dakshina_prices_usd ?? '',
-        dakshinaStatus: selectedPuja.is_dakshina_active ?? false,
-        manokamnaPrices: selectedPuja.manokamna_prices_inr ?? '',
-        manokamnaPricesUSD: selectedPuja.manokamna_prices_usd ?? '',
-        manokamnaStatus: selectedPuja.is_manokamna_active ?? false,
-        category: selectedPuja.category ?? 'general',
-        isActive: selectedPuja.is_active ?? true,
-        isFeatured: selectedPuja.is_featured ?? false,
-      });
-    }
-  }, [selectedPuja, visible, pujaId]);
+        const safeSelectedPlanIds = Array.isArray(pujaData.selected_plan_ids) 
+          ? pujaData.selected_plan_ids.filter((id: any) => id != null).map((id: any) => id.toString())
+          : [];
 
-  // Dropzone for Puja Images
+        const newFormData = {
+          pujaName: (pujaData.name ?? '').toString().trim(),
+          subHeading: (pujaData.sub_heading ?? '').toString().trim(),
+          about: (pujaData.description ?? '').toString().trim(),
+          pujaImages: [], // Reset to empty File array on update
+          templeImage: (pujaData.temple_image_url ?? '').toString().trim(),
+          templeAddress: (pujaData.temple_address ?? '').toString().trim(),
+          templeDescription: (pujaData.temple_description ?? '').toString().trim(),
+          benefits: safeBenefits,
+          selectedPlanIds: safeSelectedPlanIds,
+          prasadPrice: (() => {
+            const price = pujaData.prasad_price;
+            if (price === null || price === undefined) return 0;
+            const numPrice = Number(price);
+            return isNaN(numPrice) ? 0 : Math.max(0, numPrice);
+          })(),
+          prasadStatus: Boolean(pujaData.is_prasad_active ?? false),
+          dakshinaPrices: (pujaData.dakshina_prices_inr ?? '').toString().trim(),
+          dakshinaPricesUSD: (pujaData.dakshina_prices_usd ?? '').toString().trim(),
+          dakshinaStatus: Boolean(pujaData.is_dakshina_active ?? false),
+          manokamnaPrices: (pujaData.manokamna_prices_inr ?? '').toString().trim(),
+          manokamnaPricesUSD: (pujaData.manokamna_prices_usd ?? '').toString().trim(),
+          manokamnaStatus: Boolean(pujaData.is_manokamna_active ?? false),
+          category: (pujaData.category ?? 'general').toString().trim(),
+          isActive: Boolean(pujaData.is_active ?? true),
+          isFeatured: Boolean(pujaData.is_featured ?? false),
+        };
+
+        setFormData(newFormData);
+        
+        // Reset images changed flag when new data is loaded
+        setImagesChanged(false);
+        
+        // Set Ant Design form values to match the state
+        form.setFieldsValue({
+          pujaName: newFormData.pujaName,
+          subHeading: newFormData.subHeading,
+          about: newFormData.about,
+          templeAddress: newFormData.templeAddress,
+          templeDescription: newFormData.templeDescription,
+          prasadPrice: newFormData.prasadPrice,
+          prasadStatus: newFormData.prasadStatus,
+          dakshinaPrices: newFormData.dakshinaPrices,
+          dakshinaPricesUSD: newFormData.dakshinaPricesUSD,
+          dakshinaStatus: newFormData.dakshinaStatus,
+          manokamnaPrices: newFormData.manokamnaPrices,
+          manokamnaPricesUSD: newFormData.manokamnaPricesUSD,
+          manokamnaStatus: newFormData.manokamnaStatus,
+          category: newFormData.category,
+          isActive: newFormData.isActive,
+          isFeatured: newFormData.isFeatured,
+          // Set benefits with proper nested structure
+          benefits: (newFormData.benefits as Array<{title: string, description: string}>).map((benefit, index) => ({
+            title: benefit.title,
+            description: benefit.description
+          }))
+        });
+        
+        console.log('UpdatePujaModal - Form data and Ant Design form values set successfully');
+      } catch (error) {
+        console.error('Error setting form data from pujaData:', error);
+      }
+    }
+  }, [pujaData, isVisible, form]);
+
+  // Dropzone for Puja Images with enhanced safety
   const { getRootProps: getPujaRootProps, getInputProps: getPujaInputProps } = useDropzone({
     accept: { 'image/*': [] },
     multiple: true,
     maxFiles: 6,
-    onDrop: (acceptedFiles) => {
-      const fileNames = acceptedFiles.map((file) => file.name);
-      handleInputChange('pujaImages', fileNames);
+    maxSize: 10 * 1024 * 1024, // 10MB per file
+    onDrop: (acceptedFiles, rejectedFiles) => {
+      try {
+        // Handle rejected files
+        if (rejectedFiles.length > 0) {
+          rejectedFiles.forEach(({ file, errors }) => {
+            errors.forEach(error => {
+              if (error.code === 'file-too-large') {
+                console.error(`File ${file.name} is too large. Maximum size is 10MB.`);
+              } else if (error.code === 'file-invalid-type') {
+                console.error(`File ${file.name} has invalid type. Only images are allowed.`);
+              } else if (error.code === 'too-many-files') {
+                console.error('Too many files. Maximum 6 images allowed.');
+              }
+            });
+          });
+        }
+        
+        // Handle accepted files
+        if (Array.isArray(acceptedFiles) && acceptedFiles.length > 0) {
+          const validFiles = acceptedFiles.filter(file => file && file instanceof File);
+          
+          if (validFiles.length > 6) {
+            console.warn('Only 6 images allowed. Taking first 6 files.');
+            handleInputChange('pujaImages', validFiles.slice(0, 6));
+          } else {
+            handleInputChange('pujaImages', validFiles);
+          }
+          
+          setImagesChanged(true);
+        }
+      } catch (error) {
+        console.error('Error handling puja images drop:', error);
+      }
     },
   });
 
-  // Dropzone for Temple Image
+  // Dropzone for Temple Image with enhanced safety
   const { getRootProps: getTempleRootProps, getInputProps: getTempleInputProps } = useDropzone({
     accept: { 'image/*': [] },
     multiple: false,
-    onDrop: (acceptedFiles) => {
-      const fileName = acceptedFiles[0]?.name || '';
-      handleInputChange('templeImage', fileName);
+    maxSize: 10 * 1024 * 1024, // 10MB
+    onDrop: (acceptedFiles, rejectedFiles) => {
+      try {
+        // Handle rejected files
+        if (rejectedFiles.length > 0) {
+          rejectedFiles.forEach(({ file, errors }) => {
+            errors.forEach(error => {
+              if (error.code === 'file-too-large') {
+                console.error(`File ${file.name} is too large. Maximum size is 10MB.`);
+              } else if (error.code === 'file-invalid-type') {
+                console.error(`File ${file.name} has invalid type. Only images are allowed.`);
+              }
+            });
+          });
+        }
+        
+        // Handle accepted files
+        if (Array.isArray(acceptedFiles) && acceptedFiles.length > 0 && acceptedFiles[0]) {
+          const fileName = acceptedFiles[0]?.name?.toString()?.trim() || '';
+          handleInputChange('templeImage', fileName);
+        }
+      } catch (error) {
+        console.error('Error handling temple image drop:', error);
+      }
     },
   });
 
   const handleInputChange = (field: keyof PujaFormData, value: any) => {
-    setFormData((prev) => ({
-      ...prev,
-      [field]: value ?? '',
-    }));
+    try {
+      setFormData((prev) => {
+        if (!prev || typeof prev !== 'object') {
+          console.error('Previous form data is invalid:', prev);
+          return prev;
+        }
+        
+        // Safe value handling based on field type
+        let safeValue;
+        switch (field) {
+          case 'pujaImages':
+            safeValue = Array.isArray(value) ? value.filter(v => v instanceof File) : [];
+            break;
+          case 'benefits':
+            safeValue = Array.isArray(value) ? value : [];
+            break;
+          case 'selectedPlanIds':
+            safeValue = Array.isArray(value) ? value.filter(v => v != null).map(v => v.toString()) : [];
+            break;
+          case 'prasadPrice':
+            const numValue = Number(value);
+            safeValue = isNaN(numValue) ? 0 : Math.max(0, numValue);
+            break;
+          case 'prasadStatus':
+          case 'dakshinaStatus':
+          case 'manokamnaStatus':
+          case 'isActive':
+          case 'isFeatured':
+            safeValue = Boolean(value);
+            break;
+          default:
+            safeValue = (value ?? '').toString().trim();
+        }
+        
+        return {
+          ...prev,
+          [field]: safeValue,
+        };
+      });
+    } catch (error) {
+      console.error(`Error updating field ${field}:`, error);
+    }
   };
 
   const handleBenefitChange = (index: number, field: keyof Benefit, value: string) => {
-    const newBenefits = [...(formData.benefits ?? [])];
-    newBenefits[index] = { ...newBenefits[index], [field]: value ?? '' };
-    setFormData((prev) => ({ ...prev, benefits: newBenefits }));
+    try {
+      const safeIndex = Math.max(0, Math.min(index, 3)); // Ensure index is between 0-3
+      const safeValue = (value ?? '').toString().trim();
+      
+      setFormData((prev) => {
+        if (!prev || typeof prev !== 'object') {
+          console.error('Previous form data is invalid:', prev);
+          return prev;
+        }
+        
+        const currentBenefits = Array.isArray(prev.benefits) ? [...prev.benefits] : [
+          { title: '', description: '' },
+          { title: '', description: '' },
+          { title: '', description: '' },
+          { title: '', description: '' },
+        ];
+        
+        // Ensure the benefit at index exists
+        if (!currentBenefits[safeIndex] || typeof currentBenefits[safeIndex] !== 'object') {
+          currentBenefits[safeIndex] = { title: '', description: '' };
+        }
+        
+        currentBenefits[safeIndex] = { 
+          ...currentBenefits[safeIndex], 
+          [field]: safeValue 
+        };
+        
+        return { ...prev, benefits: currentBenefits };
+      });
+    } catch (error) {
+      console.error(`Error updating benefit ${index}.${field}:`, error);
+    }
   };
 
   const handleSubmit = async () => {
+    console.log("UpdatePujaModal - handleSubmit called");
+    console.log("Images changed:", imagesChanged);
+    console.log("Form data images:", formData.pujaImages);
+    
     try {
-      if (!pujaId) {
+      if (!safePujaId) {
         console.error('Puja ID is required');
         return;
       }
       
+      if (!formData || typeof formData !== 'object') {
+        console.error('Form data is invalid:', formData);
+        return;
+      }
+      
       const requestData = {
-        name: (formData.pujaName ?? '').trim(),
-        sub_heading: (formData.subHeading ?? '').trim(),
-        description: (formData.about ?? '').trim(),
+        name: (formData.pujaName ?? '').toString().trim(),
+        sub_heading: (formData.subHeading ?? '').toString().trim(),
+        description: (formData.about ?? '').toString().trim(),
         date: null,
         time: null,
-        temple_image_url: formData.templeImage ?? '',
-        temple_address: (formData.templeAddress ?? '').trim(),
-        temple_description: (formData.templeDescription ?? '').trim(),
-        prasad_price: formData.prasadPrice ?? 0,
-        is_prasad_active: formData.prasadStatus ?? false,
-        dakshina_prices_inr: formData.dakshinaPrices ?? '',
-        dakshina_prices_usd: formData.dakshinaPricesUSD ?? '',
-        is_dakshina_active: formData.dakshinaStatus ?? false,
-        manokamna_prices_inr: formData.manokamnaPrices ?? '',
-        manokamna_prices_usd: formData.manokamnaPricesUSD ?? '',
-        is_manokamna_active: formData.manokamnaStatus ?? false,
-        category: formData.category ?? 'general',
-        is_active: formData.isActive ?? true,
-        is_featured: formData.isFeatured ?? false,
-        benefits: formData.benefits ?? [],
-        selected_plan_ids: formData.selectedPlanIds ?? [],
-      };
-      await dispatch(updatePuja({ id: pujaId, ...requestData }) as any);
-      onSuccess?.();
-      onCancel();
+        temple_image_url: (formData.templeImage ?? '').toString().trim(),
+        temple_address: (formData.templeAddress ?? '').toString().trim(),
+        temple_description: (formData.templeDescription ?? '').toString().trim(),
+        prasad_price: (() => {
+          const price = formData.prasadPrice;
+          if (price === null || price === undefined) return 0;
+          const numPrice = Number(price);
+          return isNaN(numPrice) ? 0 : Math.max(0, numPrice);
+        })(),
+        is_prasad_active: Boolean(formData.prasadStatus ?? false),
+        dakshina_prices_inr: (formData.dakshinaPrices ?? '').toString().trim(),
+        dakshina_prices_usd: (formData.dakshinaPricesUSD ?? '').toString().trim(),
+        is_dakshina_active: Boolean(formData.dakshinaStatus ?? false),
+        manokamna_prices_inr: (formData.manokamnaPrices ?? '').toString().trim(),
+        manokamna_prices_usd: (formData.manokamnaPricesUSD ?? '').toString().trim(),
+        is_manokamna_active: Boolean(formData.manokamnaStatus ?? false),
+        category: (formData.category ?? 'general').toString().trim(),
+        is_active: Boolean(formData.isActive ?? true),
+        is_featured: Boolean(formData.isFeatured ?? false),
+        benefits: Array.isArray(formData.benefits) 
+          ? formData.benefits.map(benefit => ({
+              title: (benefit?.title ?? '').toString().trim(),
+              description: (benefit?.description ?? '').toString().trim()
+            }))
+          : [],
+        selected_plan_ids: Array.isArray(formData.selectedPlanIds) 
+          ? formData.selectedPlanIds.filter(id => id != null).map(id => id.toString())
+          : [],
+      } as any;
+      
+      console.log("Calling updatePuja with:", requestData);
+      const updateResult = await dispatch(updatePuja({ id: safePujaId, ...requestData }));
+      console.log("Update result:", updateResult);
+      
+      // Only upload images if they were changed and are valid
+      if (updatePuja.fulfilled.match(updateResult) && 
+          imagesChanged && 
+          Array.isArray(formData.pujaImages) && 
+          formData.pujaImages.length > 0) {
+        
+        const validImages = formData.pujaImages.filter(img => img instanceof File);
+        if (validImages.length > 0) {
+          console.log("Uploading images:", validImages);
+          await dispatch(uploadPujaImages({
+            pujaId: safePujaId,
+            images: validImages
+          }));
+        }
+      }
+      
+      safeOnSuccess();
+      safeOnCancel();
     } catch (error) {
-      // Errors not handled via Redux state as per request
+      console.error("Error in handleSubmit:", error);
     }
   };
+
+  // Early return if not visible
+  if (!isVisible) {
+    return null;
+  }
 
   return (
     <Modal
@@ -197,17 +428,18 @@ const UpdatePujaModal: React.FC<UpdatePujaModalProps> = ({ pujaId, visible, onCa
         </div>
       }
       open={visible}
-      onCancel={onCancel}
+      onCancel={safeOnCancel}
       footer={null}
       width={1000}
+      style={{ top: 20 }}
       className="admin-puja-modal"
     >
       <Form form={form} onFinish={handleSubmit} layout="vertical" className="space-y-6">
-        <div className="max-h-[70vh] overflow-y-auto pr-2">
+        <div className="max-h-[80vh] overflow-y-auto pr-2">
           {/* Section 1: Puja Details */}
-          <div className="bg-gradient-to-r from-orange-50 to-orange-100 p-4 rounded-xl border border-orange-200 mb-4">
-            <h3 className="text-md font-semibold text-orange-800 mb-3 font-['Philosopher'] flex items-center gap-2">
-              <span className="text-xl">🛕</span>
+          <div className="bg-gradient-to-r from-orange-50 to-orange-100 p-6 rounded-xl border border-orange-200 mb-6">
+            <h3 className="text-lg font-semibold text-orange-800 mb-4 font-['Philosopher'] flex items-center gap-2">
+              <span className="text-2xl">🛕</span>
               1. Puja Details
             </h3>
 
@@ -215,14 +447,14 @@ const UpdatePujaModal: React.FC<UpdatePujaModalProps> = ({ pujaId, visible, onCa
               <Col span={12}>
                 <Form.Item
                   name="pujaName"
-                  label={<span className="block text-sm font-medium text-gray-700">Puja Name</span>}
+                  label={<span className="block text-sm font-medium text-gray-700 mb-2">Puja Name</span>}
                   required={true}
                 >
                   <Input
-                    value={formData.pujaName ?? ''}
-                    onChange={(e) => handleInputChange('pujaName', e.target.value ?? '')}
+                    value={(formData.pujaName ?? '').toString()}
+                    onChange={(e) => handleInputChange('pujaName', e?.target?.value ?? '')}
                     placeholder="Enter puja name"
-                    className="w-full px-3 py-2 border border-orange-200 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                    className="w-full px-4 py-3 border border-orange-200 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent text-black placeholder-gray-400"
                   />
                 </Form.Item>
               </Col>
@@ -230,14 +462,14 @@ const UpdatePujaModal: React.FC<UpdatePujaModalProps> = ({ pujaId, visible, onCa
               <Col span={12}>
                 <Form.Item
                   name="subHeading"
-                  label={<span className="block text-sm font-medium text-gray-700">Sub Heading</span>}
+                  label={<span className="block text-sm font-medium text-gray-700 mb-2">Sub Heading</span>}
                   required={true}
                 >
                   <Input
-                    value={formData.subHeading ?? ''}
-                    onChange={(e) => handleInputChange('subHeading', e.target.value ?? '')}
+                    value={(formData.subHeading ?? '').toString()}
+                    onChange={(e) => handleInputChange('subHeading', e?.target?.value ?? '')}
                     placeholder="Enter puja sub heading"
-                    className="w-full px-3 py-2 border border-orange-200 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                    className="w-full px-4 py-3 border border-orange-200 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent text-black placeholder-gray-400"
                   />
                 </Form.Item>
               </Col>
@@ -245,29 +477,43 @@ const UpdatePujaModal: React.FC<UpdatePujaModalProps> = ({ pujaId, visible, onCa
 
             <Form.Item
               name="about"
-              label={<span className="block text-sm font-medium text-gray-700">About Puja</span>}
+              label={<span className="block text-sm font-medium text-gray-700 mb-2">About Puja</span>}
+            >
+              <Input.TextArea
+                value={(formData.about ?? '').toString()}
+                onChange={(e) => handleInputChange('about', e?.target?.value ?? '')}
+                rows={4}
+                placeholder="Enter detailed description about the puja"
+                className="w-full px-4 py-3 border border-orange-200 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent text-black placeholder-gray-400"
+              />
+            </Form.Item>
+
+            {/* <Form.Item
+              name="about"
+              label={<span className="block text-sm font-medium text-gray-700 mb-2">About Puja</span>}
             >
               <Input.TextArea
                 value={formData.about ?? ''}
                 onChange={(e) => handleInputChange('about', e.target.value ?? '')}
-                rows={3}
+                rows={4}
                 placeholder="Enter detailed description about the puja"
-                className="w-full px-3 py-2 border border-orange-200 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                className="w-full px-4 py-3 border border-orange-200 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent text-black placeholder-gray-400"
               />
-            </Form.Item>
+            </Form.Item> */}
 
             <Form.Item
               name="pujaImages"
-              label={<span className="block text-sm font-medium text-gray-700">Puja Images (Max 6)</span>}
+              label={<span className="block text-sm font-medium text-gray-700 mb-2">Puja Images (Max 6)</span>}
             >
               <div
                 {...getPujaRootProps()}
-                className="flex flex-col items-center justify-center w-full h-24 border-2 border-dashed rounded-lg cursor-pointer transition-colors duration-200 border-orange-300 bg-orange-50 hover:bg-orange-100"
+                className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer transition-colors duration-200 border-orange-300 bg-orange-50 hover:bg-orange-100"
               >
+
                 <input {...getPujaInputProps()} />
-                <div className="flex flex-col items-center justify-center pt-3 pb-4">
+                <div className="flex flex-col items-center justify-center pt-5 pb-6">
                   <svg
-                    className="w-6 h-6 mb-1 text-orange-400"
+                    className="w-8 h-8 mb-2 text-orange-400"
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"
@@ -279,137 +525,221 @@ const UpdatePujaModal: React.FC<UpdatePujaModalProps> = ({ pujaId, visible, onCa
                       d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
                     />
                   </svg>
-                  <p className="mb-1 text-xs font-medium text-orange-600">
-                    {formData.pujaImages.length > 0 ? `Selected ${formData.pujaImages.length} files` : 'Click or drag to upload images'}
+                  <p className="mb-1 text-sm font-medium text-orange-600">
+                    {(formData.pujaImages && Array.isArray(formData.pujaImages) && formData.pujaImages.length > 0) 
+                      ? `Selected ${formData.pujaImages.length} of 6 new images` 
+                      : 'Click or drag to upload new images (up to 6)'}
                   </p>
-                  <p className="text-xs text-orange-500">PNG, JPG, JPEG up to 10MB</p>
+                  <p className="text-xs text-orange-500">PNG, JPG, JPEG up to 10MB each</p>
+                  {imagesChanged && (
+                    <p className="text-xs text-green-600 font-medium mt-1">Images will be updated when saved</p>
+                  )}
                 </div>
               </div>
+              
+              {/* Display selected new images preview */}
+              {formData.pujaImages && Array.isArray(formData.pujaImages) && formData.pujaImages.length > 0 && (
+                <div className="mt-4">
+                  <h4 className="text-sm font-medium text-gray-700 mb-2">New Images to Upload:</h4>
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                    {formData.pujaImages.map((file, index) => (
+                      <div key={index} className="relative bg-white p-3 rounded-lg border border-orange-200">
+                        <div className="flex items-center gap-2">
+                          <svg className="w-4 h-4 text-orange-500" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clipRule="evenodd" />
+                          </svg>
+                          <span className="text-xs text-gray-600 truncate flex-1">{file.name}</span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (formData.pujaImages && Array.isArray(formData.pujaImages)) {
+                                const updatedImages = formData.pujaImages.filter((_, i) => i !== index);
+                                handleInputChange('pujaImages', updatedImages);
+                                if (updatedImages.length === 0) {
+                                  setImagesChanged(false);
+                                }
+                              }
+                            }}
+                            className="text-red-500 hover:text-red-700 text-xs"
+                          >
+                            ✕
+                          </button>
+                        </div>
+                        <div className="text-xs text-gray-400 mt-1">
+                          {(file.size / 1024 / 1024).toFixed(2)} MB
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              
+              {/* Show existing images info */}
+              {pujaData && pujaData.puja_images && Array.isArray(pujaData.puja_images) && pujaData.puja_images.length > 0 && (
+                <div className="mt-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                  <h4 className="text-sm font-medium text-blue-700 mb-2">Current Images:</h4>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                    {pujaData.puja_images.map((imageUrl: string, index: number) => (
+                      <div key={index} className="bg-white p-2 rounded border border-blue-200">
+                        <div className="flex items-center gap-1">
+                          <svg className="w-3 h-3 text-blue-500" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clipRule="evenodd" />
+                          </svg>
+                          <span className="text-xs text-blue-600">Image {index + 1}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <p className="text-xs text-blue-600 mt-2">
+                    {imagesChanged ? 'These will be replaced with new images when saved' : 'Upload new images to replace these'}
+                  </p>
+                </div>
+              )}
             </Form.Item>
           </div>
 
           {/* Section 2: Temple Details */}
-          <div className="bg-gradient-to-r from-indigo-50 to-indigo-100 p-4 rounded-xl border border-indigo-200 mb-4">
-            <h3 className="text-md font-semibold text-indigo-800 mb-3 font-['Philosopher'] flex items-center gap-2">
-              <span className="text-xl">🏦</span>
+          <div className="bg-gradient-to-r from-indigo-50 to-indigo-100 p-6 rounded-xl border border-indigo-200 mb-6">
+            <h3 className="text-lg font-semibold text-indigo-800 mb-4 font-['Philosopher'] flex items-center gap-2">
+              <span className="text-2xl">🏦</span>
               2. Temple Details
             </h3>
 
-            <Row gutter={16}>
-              <Col span={12}>
-                <Form.Item
-                  name="templeImage"
-                  label={<span className="block text-sm font-medium text-gray-700">Temple Image</span>}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <Form.Item
+                name="templeImage"
+                label={<span className="block text-sm font-medium text-gray-700 mb-2">Temple Image</span>}
+              >
+                <div
+                  {...getTempleRootProps()}
+                  className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer bg-indigo-50 hover:bg-indigo-100 transition-colors duration-200 border-indigo-300"
                 >
-                  <div
-                    {...getTempleRootProps()}
-                    className="flex flex-col items-center justify-center w-full h-24 border-2 border-dashed rounded-lg cursor-pointer bg-indigo-50 hover:bg-indigo-100 transition-colors duration-200 border-indigo-300"
-                  >
-                    <input {...getTempleInputProps()} />
-                    <div className="flex flex-col items-center justify-center pt-3 pb-4">
-                      <svg
-                        className="w-6 h-6 mb-1 text-indigo-400"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
-                        />
-                      </svg>
-                      <p className="mb-1 text-xs text-indigo-600 font-medium">
-                        {formData.templeImage ? `Selected: ${formData.templeImage}` : 'Click or drag to upload Temple Image'}
-                      </p>
-                      <p className="text-xs text-indigo-500">PNG, JPG, JPEG up to 10MB</p>
+                  <input {...getTempleInputProps()} />
+                  <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                    <svg
+                      className="w-8 h-8 mb-2 text-indigo-400"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
+                      />
+                    </svg>
+                    <p className="mb-1 text-sm text-indigo-600 font-medium">
+                      {(formData.templeImage && formData.templeImage.toString().trim()) 
+                        ? `Selected: ${formData.templeImage}` 
+                        : 'Click or drag to upload Temple Image'}
+                    </p>
+                    <p className="text-xs text-indigo-500">PNG, JPG, JPEG up to 10MB</p>
+                  </div>
+                </div>
+                
+                {/* Display selected temple image with remove option */}
+                {formData.templeImage && formData.templeImage.toString().trim() && (
+                  <div className="mt-4">
+                    <div className="bg-white p-3 rounded-lg border border-indigo-200">
+                      <div className="flex items-center gap-2">
+                        <svg className="w-4 h-4 text-indigo-500" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clipRule="evenodd" />
+                        </svg>
+                        <span className="text-sm text-gray-600 truncate flex-1">{formData.templeImage}</span>
+                        <button
+                          type="button"
+                          onClick={() => handleInputChange('templeImage', '')}
+                          className="text-red-500 hover:text-red-700 text-sm font-medium"
+                        >
+                          ✕
+                        </button>
+                      </div>
                     </div>
                   </div>
-                </Form.Item>
-              </Col>
+                )}
+              </Form.Item>
 
-              <Col span={12}>
-                <Form.Item
-                  name="templeAddress"
-                  label={<span className="block text-sm font-medium text-gray-700">Temple Address</span>}
-                >
-                  <Input
-                    value={formData.templeAddress ?? ''}
-                    onChange={(e) => handleInputChange('templeAddress', e.target.value ?? '')}
-                    placeholder="Enter complete temple address"
-                    className="w-full px-3 py-2 border border-indigo-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                  />
-                </Form.Item>
-              </Col>
-            </Row>
+              <Form.Item
+                name="templeAddress"
+                label={<span className="block text-sm font-medium text-gray-700 mb-2">Temple Address</span>}
+              >
+                <Input
+                  value={(formData.templeAddress ?? '').toString()}
+                  onChange={(e) => handleInputChange('templeAddress', e?.target?.value ?? '')}
+                  placeholder="Enter complete temple address"
+                  className="w-full px-4 py-3 border border-indigo-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-black placeholder-gray-400"
+                />
+              </Form.Item>
+            </div>
 
             <Form.Item
               name="templeDescription"
-              label={<span className="block text-sm font-medium text-gray-700">Temple Description</span>}
+              label={<span className="block text-sm font-medium text-gray-700 mb-2">Temple Description</span>}
             >
               <Input.TextArea
-                value={formData.templeDescription ?? ''}
-                onChange={(e) => handleInputChange('templeDescription', e.target.value ?? '')}
-                rows={3}
+                value={(formData.templeDescription ?? '').toString()}
+                onChange={(e) => handleInputChange('templeDescription', e?.target?.value ?? '')}
+                rows={4}
                 placeholder="Enter temple description, history, and significance"
-                className="w-full px-3 py-2 border border-indigo-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                className="w-full px-4 py-3 border border-indigo-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-black placeholder-gray-400"
               />
             </Form.Item>
           </div>
 
           {/* Section 3: Puja Benefits */}
-          <div className="bg-gradient-to-r from-green-50 to-green-100 p-4 rounded-xl border border-green-200 mb-4">
-            <h3 className="text-md font-semibold text-green-800 mb-3 font-['Philosopher'] flex items-center gap-2">
-              <span className="text-xl">✨</span>
+          <div className="bg-gradient-to-r from-green-50 to-green-100 p-6 rounded-xl border border-green-200 mb-6">
+            <h3 className="text-lg font-semibold text-green-800 mb-4 font-['Philosopher'] flex items-center gap-2">
+              <span className="text-2xl">✨</span>
               3. Puja Benefits
             </h3>
 
-            <Row gutter={16}>
-              {(formData.benefits ?? []).map((benefit, index) => (
-                <Col span={12} key={index}>
-                  <div className="bg-white p-3 rounded-lg border border-green-200 mb-3">
-                    <h4 className="font-medium text-green-700 mb-2">Benefit {index + 1}</h4>
-                    <Form.Item
-                      name={['benefits', index, 'title']}
-                      label={<span className="block text-xs font-medium text-gray-700">Title</span>}
-                    >
-                      <Input
-                        value={benefit?.title ?? ''}
-                        onChange={(e) => handleBenefitChange(index, 'title', e.target.value ?? '')}
-                        placeholder={`Enter benefit ${index + 1} title`}
-                        className="w-full px-3 py-2 border border-green-200 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent text-sm"
-                      />
-                    </Form.Item>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {(formData.benefits && Array.isArray(formData.benefits) ? formData.benefits : []).map((benefit, index) => {
+                const safeBenefit = benefit && typeof benefit === 'object' ? benefit : { title: '', description: '' };
+                return (
+                <div key={index} className="bg-white p-4 rounded-lg border border-green-200">
+                  <h4 className="font-medium text-green-700 mb-3">Benefit {index + 1}</h4>
+                  <Form.Item
+                    name={['benefits', index, 'title']}
+                    label={<span className="block text-sm font-medium text-gray-700 mb-2">Title</span>}
+                  >
+                    <Input
+                      value={(safeBenefit?.title ?? '').toString()}
+                      onChange={(e) => handleBenefitChange(index, 'title', e?.target?.value ?? '')}
+                      placeholder={`Enter benefit ${index + 1} title`}
+                      className="w-full px-4 py-3 border border-green-200 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent text-black placeholder-gray-400"
+                    />
+                  </Form.Item>
 
-                    <Form.Item
-                      name={['benefits', index, 'description']}
-                      label={<span className="block text-xs font-medium text-gray-700">Description</span>}
-                    >
-                      <Input.TextArea
-                        value={benefit?.description ?? ''}
-                        onChange={(e) => handleBenefitChange(index, 'description', e.target.value ?? '')}
-                        rows={2}
-                        placeholder={`Enter benefit ${index + 1} description`}
-                        className="w-full px-3 py-2 border border-green-200 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent text-sm"
-                      />
-                    </Form.Item>
-                  </div>
-                </Col>
-              ))}
-            </Row>
+                  <Form.Item
+                    name={['benefits', index, 'description']}
+                    label={<span className="block text-sm font-medium text-gray-700 mb-2">Description</span>}
+                  >
+                    <Input.TextArea
+                      value={(safeBenefit?.description ?? '').toString()}
+                      onChange={(e) => handleBenefitChange(index, 'description', e?.target?.value ?? '')}
+                      rows={3}
+                      placeholder={`Enter benefit ${index + 1} description`}
+                      className="w-full px-3 py-2 border border-green-200 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent text-black placeholder-gray-400 text-sm"
+                    />
+                  </Form.Item>
+                </div>
+                );
+              })}
+            </div>
           </div>
 
           {/* Section 4: Plan Details */}
-          <div className="bg-gradient-to-r from-purple-50 to-purple-100 p-4 rounded-xl border border-purple-200 mb-4">
-            <h3 className="text-md font-semibold text-purple-800 mb-3 font-['Philosopher'] flex items-center gap-2">
-              <span className="text-xl">📋</span>
+          <div className="bg-gradient-to-r from-purple-50 to-purple-100 p-6 rounded-xl border border-purple-200 mb-6">
+            <h3 className="text-lg font-semibold text-purple-800 mb-4 font-['Philosopher'] flex items-center gap-2">
+              <span className="text-2xl">📋</span>
               4. Plan Details
             </h3>
 
             <Form.Item
               name="selectedPlanIds"
-              label={<span className="block text-sm font-medium text-gray-700">Select Plans (Multiple Selection)</span>}
+              label={<span className="block text-sm font-medium text-gray-700 mb-2">Select Plans (Multiple Selection)</span>}
             >
               <Select
                 mode="multiple"
@@ -434,95 +764,85 @@ const UpdatePujaModal: React.FC<UpdatePujaModalProps> = ({ pujaId, visible, onCa
           </div>
 
           {/* Section 5: Prasad */}
-          <div className="bg-gradient-to-r from-yellow-50 to-yellow-100 p-4 rounded-xl border border-yellow-200 mb-4">
-            <h3 className="text-md font-semibold text-yellow-800 mb-3 font-['Philosopher'] flex items-center gap-2">
-              <span className="text-xl">🍯</span>
+          <div className="bg-gradient-to-r from-yellow-50 to-yellow-100 p-6 rounded-xl border border-yellow-200 mb-6">
+            <h3 className="text-lg font-semibold text-yellow-800 mb-4 font-['Philosopher'] flex items-center gap-2">
+              <span className="text-2xl">🍯</span>
               5. Prasad
             </h3>
 
-            <Row gutter={16} align="middle">
-              <Col span={12}>
-                <Form.Item
-                  name="prasadPrice"
-                  label={<span className="block text-sm font-medium text-gray-700">Prasad Price (₹)</span>}
-                >
-                  <Input
-                    type="number"
-                    value={(formData.prasadPrice ?? 0).toString()}
-                    onChange={(e) => handleInputChange('prasadPrice', parseInt(e.target.value ?? '0') || 0)}
-                    placeholder="Enter prasad price"
-                    className="w-full px-3 py-2 border border-yellow-200 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-transparent"
-                  />
-                </Form.Item>
-              </Col>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
+              <Form.Item
+                name="prasadPrice"
+                label={<span className="block text-sm font-medium text-gray-700 mb-2">Prasad Price (₹)</span>}
+              >
+                <Input
+                  type="number"
+                  value={(formData.prasadPrice ?? 0).toString()}
+                  onChange={(e) => handleInputChange('prasadPrice', parseInt(e?.target?.value ?? '0') || 0)}
+                  placeholder="Enter prasad price"
+                  className="w-full px-4 py-3 border border-yellow-200 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-transparent text-black placeholder-gray-400"
+                />
+              </Form.Item>
 
-              <Col span={12}>
-                <Form.Item name="prasadStatus" valuePropName="checked">
-                  <Checkbox
-                    checked={formData.prasadStatus ?? false}
-                    onChange={(e) => handleInputChange('prasadStatus', e.target.checked ?? false)}
-                    className="flex items-center gap-2 text-sm font-medium text-gray-700"
-                  >
-                    Active Prasad Service
-                  </Checkbox>
-                </Form.Item>
-              </Col>
-            </Row>
+              <Form.Item name="prasadStatus" valuePropName="checked">
+                <Checkbox
+                  checked={Boolean(formData.prasadStatus ?? false)}
+                  onChange={(e) => handleInputChange('prasadStatus', e?.target?.checked ?? false)}
+                  className="flex items-center gap-2 text-sm font-medium text-gray-700"
+                >
+                  Active Prasad Service
+                </Checkbox>
+              </Form.Item>
+            </div>
           </div>
 
           {/* Section 6: Dakshina */}
-          <div className="bg-gradient-to-r from-red-50 to-red-100 p-4 rounded-xl border border-red-200 mb-4">
-            <h3 className="text-md font-semibold text-red-800 mb-3 font-['Philosopher'] flex items-center gap-2">
-              <span className="text-xl">💰</span>
+          <div className="bg-gradient-to-r from-red-50 to-red-100 p-6 rounded-xl border border-red-200 mb-6">
+            <h3 className="text-lg font-semibold text-red-800 mb-4 font-['Philosopher'] flex items-center gap-2">
+              <span className="text-2xl">💰</span>
               6. Dakshina
             </h3>
 
-            <Row gutter={16}>
-              <Col span={8}>
-                <Form.Item
-                  name="dakshinaPrices"
-                  label={<span className="block text-sm font-medium text-gray-700">Dakshina Prices (₹)</span>}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-start">
+              <Form.Item
+                name="dakshinaPrices"
+                label={<span className="block text-sm font-medium text-gray-700 mb-2">Dakshina Prices (₹)</span>}
+              >
+                <Input
+                  value={(formData.dakshinaPrices ?? '').toString()}
+                  onChange={(e) => handleInputChange('dakshinaPrices', e?.target?.value ?? '')}
+                  placeholder="e.g., 101,201,310,500"
+                  className="w-full px-4 py-3 border border-red-200 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent text-black placeholder-gray-400"
+                />
+                <Text className="text-xs text-gray-500 mt-1">Enter comma-separated values for multiple price options</Text>
+              </Form.Item>
+
+              <Form.Item
+                name="dakshinaPricesUSD"
+                label={<span className="block text-sm font-medium text-gray-700 mb-2">Dakshina Prices (USD)</span>}
+              >
+                <Input
+                  value={(formData.dakshinaPricesUSD ?? '').toString()}
+                  onChange={(e) => handleInputChange('dakshinaPricesUSD', e?.target?.value ?? '')}
+                  placeholder="e.g., 1.5,2.5,4.0,6.0"
+                  className="w-full px-4 py-3 border border-red-200 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent text-black placeholder-gray-400"
+                />
+                <Text className="text-xs text-gray-500 mt-1">Optional: Manual USD pricing (comma-separated)</Text>
+              </Form.Item>
+
+              <Form.Item name="dakshinaStatus" valuePropName="checked">
+                <Checkbox
+                  checked={Boolean(formData.dakshinaStatus ?? false)}
+                  onChange={(e) => handleInputChange('dakshinaStatus', e?.target?.checked ?? false)}
+                  className="flex items-center gap-2 text-sm font-medium text-gray-700"
                 >
-                  <Input
-                    value={formData.dakshinaPrices ?? ''}
-                    onChange={(e) => handleInputChange('dakshinaPrices', e.target.value ?? '')}
-                    placeholder="e.g., 101,201,310,500"
-                    className="w-full px-3 py-2 border border-red-200 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
-                  />
-                  <Text className="text-xs text-gray-500 mt-1">Enter comma-separated values for multiple price options</Text>
-                </Form.Item>
-              </Col>
+                  Active Dakshina
+                </Checkbox>
+              </Form.Item>
+            </div>
 
-              <Col span={8}>
-                <Form.Item
-                  name="dakshinaPricesUSD"
-                  label={<span className="block text-sm font-medium text-gray-700">Dakshina Prices (USD)</span>}
-                >
-                  <Input
-                    value={formData.dakshinaPricesUSD ?? ''}
-                    onChange={(e) => handleInputChange('dakshinaPricesUSD', e.target.value ?? '')}
-                    placeholder="e.g., 1.5,2.5,4.0,6.0"
-                    className="w-full px-3 py-2 border border-red-200 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
-                  />
-                  <Text className="text-xs text-gray-500 mt-1">Optional: Manual USD pricing (comma-separated)</Text>
-                </Form.Item>
-              </Col>
-
-              <Col span={8}>
-                <Form.Item name="dakshinaStatus" valuePropName="checked">
-                  <Checkbox
-                    checked={formData.dakshinaStatus ?? false}
-                    onChange={(e) => handleInputChange('dakshinaStatus', e.target.checked ?? false)}
-                    className="flex items-center gap-2 text-sm font-medium text-gray-700"
-                  >
-                    Active Dakshina
-                  </Checkbox>
-                </Form.Item>
-              </Col>
-            </Row>
-
-            <div className="mt-3 p-2 bg-white rounded-lg border border-red-200">
-              <Text className="text-xs text-gray-600">
+            <div className="mt-4 p-3 bg-white rounded-lg border border-red-200">
+              <Text className="text-sm text-gray-600">
                 <span className="font-medium">Note: </span>
                 <span className="text-red-600">No automatic conversion - you can manually set both INR and USD prices</span>
               </Text>
@@ -530,58 +850,52 @@ const UpdatePujaModal: React.FC<UpdatePujaModalProps> = ({ pujaId, visible, onCa
           </div>
 
           {/* Section 7: Manokamna Parchi */}
-          <div className="bg-gradient-to-r from-pink-50 to-pink-100 p-4 rounded-xl border border-pink-200 mb-4">
-            <h3 className="text-md font-semibold text-pink-800 mb-3 font-['Philosopher'] flex items-center gap-2">
-              <span className="text-xl">📜</span>
+          <div className="bg-gradient-to-r from-pink-50 to-pink-100 p-6 rounded-xl border border-pink-200 mb-6">
+            <h3 className="text-lg font-semibold text-pink-800 mb-4 font-['Philosopher'] flex items-center gap-2">
+              <span className="text-2xl">📜</span>
               7. Manokamna Parchi
             </h3>
 
-            <Row gutter={16}>
-              <Col span={8}>
-                <Form.Item
-                  name="manokamnaPrices"
-                  label={<span className="block text-sm font-medium text-gray-700">Manokamna Prices (₹)</span>}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-start">
+              <Form.Item
+                name="manokamnaPrices"
+                label={<span className="block text-sm font-medium text-gray-700 mb-2">Manokamna Prices (₹)</span>}
+              >
+                <Input
+                  value={(formData.manokamnaPrices ?? '').toString()}
+                  onChange={(e) => handleInputChange('manokamnaPrices', e?.target?.value ?? '')}
+                  placeholder="e.g., 51,101,151,251"
+                  className="w-full px-4 py-3 border border-pink-200 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent text-black placeholder-gray-400"
+                />
+                <Text className="text-xs text-gray-500 mt-1">Enter comma-separated values for multiple price options</Text>
+              </Form.Item>
+
+              <Form.Item
+                name="manokamnaPricesUSD"
+                label={<span className="block text-sm font-medium text-gray-700 mb-2">Manokamna Prices (USD)</span>}
+              >
+                <Input
+                  value={(formData.manokamnaPricesUSD ?? '').toString()}
+                  onChange={(e) => handleInputChange('manokamnaPricesUSD', e?.target?.value ?? '')}
+                  placeholder="e.g., 0.75,1.25,2.0,3.0"
+                  className="w-full px-4 py-3 border border-pink-200 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent text-black placeholder-gray-400"
+                />
+                <Text className="text-xs text-gray-500 mt-1">Optional: Manual USD pricing (comma-separated)</Text>
+              </Form.Item>
+
+              <Form.Item name="manokamnaStatus" valuePropName="checked">
+                <Checkbox
+                  checked={Boolean(formData.manokamnaStatus ?? false)}
+                  onChange={(e) => handleInputChange('manokamnaStatus', e?.target?.checked ?? false)}
+                  className="flex items-center gap-2 text-sm font-medium text-gray-700"
                 >
-                  <Input
-                    value={formData.manokamnaPrices ?? ''}
-                    onChange={(e) => handleInputChange('manokamnaPrices', e.target.value ?? '')}
-                    placeholder="e.g., 51,101,151,251"
-                    className="w-full px-3 py-2 border border-pink-200 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent"
-                  />
-                  <Text className="text-xs text-gray-500 mt-1">Enter comma-separated values for multiple price options</Text>
-                </Form.Item>
-              </Col>
+                  Active Manokamna
+                </Checkbox>
+              </Form.Item>
+            </div>
 
-              <Col span={8}>
-                <Form.Item
-                  name="manokamnaPricesUSD"
-                  label={<span className="block text-sm font-medium text-gray-700">Manokamna Prices (USD)</span>}
-                >
-                  <Input
-                    value={formData.manokamnaPricesUSD ?? ''}
-                    onChange={(e) => handleInputChange('manokamnaPricesUSD', e.target.value ?? '')}
-                    placeholder="e.g., 0.75,1.25,2.0,3.0"
-                    className="w-full px-3 py-2 border border-pink-200 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent"
-                  />
-                  <Text className="text-xs text-gray-500 mt-1">Optional: Manual USD pricing (comma-separated)</Text>
-                </Form.Item>
-              </Col>
-
-              <Col span={8}>
-                <Form.Item name="manokamnaStatus" valuePropName="checked">
-                  <Checkbox
-                    checked={formData.manokamnaStatus ?? false}
-                    onChange={(e) => handleInputChange('manokamnaStatus', e.target.checked ?? false)}
-                    className="flex items-center gap-2 text-sm font-medium text-gray-700"
-                  >
-                    Active Manokamna
-                  </Checkbox>
-                </Form.Item>
-              </Col>
-            </Row>
-
-            <div className="mt-3 p-2 bg-white rounded-lg border border-pink-200">
-              <Text className="text-xs text-gray-600">
+            <div className="mt-4 p-3 bg-white rounded-lg border border-pink-200">
+              <Text className="text-sm text-gray-600">
                 <span className="font-medium">Note: </span>
                 <span className="text-pink-600">
                   Manokamna Parchi allows devotees to write their wishes and prayers. No automatic conversion - you can
@@ -592,63 +906,59 @@ const UpdatePujaModal: React.FC<UpdatePujaModalProps> = ({ pujaId, visible, onCa
           </div>
 
           {/* General Settings */}
-          <div className="bg-gradient-to-r from-gray-50 to-gray-100 p-4 rounded-xl border border-gray-200 mb-4">
-            <h3 className="text-md font-semibold text-gray-800 mb-3 font-['Philosopher'] flex items-center gap-2">
-              <span className="text-xl">⚙️</span>
+          <div className="bg-gradient-to-r from-gray-50 to-gray-100 p-6 rounded-xl border border-gray-200 mb-6">
+            <h3 className="text-lg font-semibold text-gray-800 mb-4 font-['Philosopher'] flex items-center gap-2">
+              <span className="text-2xl">⚙️</span>
               General Settings
             </h3>
 
-            <Row gutter={16}>
-              <Col span={12}>
-                <Form.Item
-                  name="category"
-                  label={<span className="block text-sm font-medium text-gray-700">Category</span>}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <Form.Item
+                name="category"
+                label={<span className="block text-sm font-medium text-gray-700 mb-2">Category</span>}
+              >
+                <Select
+                  value={(formData.category ?? 'general').toString()}
+                  onChange={(value) => handleInputChange('category', value ?? 'general')}
+                  className="w-full"
+                  dropdownClassName="border border-gray-200 rounded-lg"
+                  style={{
+                    background: 'white',
+                    borderRadius: '0.5rem',
+                    border: '1px solid #E5E7EB',
+                  }}
                 >
-                  <Select
-                    value={formData.category ?? 'general'}
-                    onChange={(value) => handleInputChange('category', value ?? 'general')}
-                    className="w-full"
-                    dropdownClassName="border border-gray-200 rounded-lg"
-                    style={{
-                      background: 'white',
-                      borderRadius: '0.5rem',
-                      border: '1px solid #E5E7EB',
-                    }}
+                  <Option value="general">General</Option>
+                  <Option value="prosperity">Prosperity</Option>
+                  <Option value="health">Health</Option>
+                  <Option value="education">Education</Option>
+                  <Option value="marriage">Marriage</Option>
+                  <Option value="spiritual">Spiritual</Option>
+                </Select>
+              </Form.Item>
+
+              <div className="flex items-center gap-6 mt-8">
+                <Form.Item name="isActive" valuePropName="checked">
+                  <Checkbox
+                    checked={Boolean(formData.isActive ?? true)}
+                    onChange={(e) => handleInputChange('isActive', e?.target?.checked ?? true)}
+                    className="flex items-center gap-2 text-sm font-medium text-gray-700"
                   >
-                    <Option value="general">General</Option>
-                    <Option value="prosperity">Prosperity</Option>
-                    <Option value="health">Health</Option>
-                    <Option value="education">Education</Option>
-                    <Option value="marriage">Marriage</Option>
-                    <Option value="spiritual">Spiritual</Option>
-                  </Select>
+                    Active
+                  </Checkbox>
                 </Form.Item>
-              </Col>
 
-              <Col span={12}>
-                <div className="flex items-center gap-6 mt-6">
-                  <Form.Item name="isActive" valuePropName="checked">
-                    <Checkbox
-                      checked={formData.isActive ?? true}
-                      onChange={(e) => handleInputChange('isActive', e.target.checked ?? true)}
-                      className="flex items-center gap-2 text-sm font-medium text-gray-700"
-                    >
-                      Active
-                    </Checkbox>
-                  </Form.Item>
-
-                  <Form.Item name="isFeatured" valuePropName="checked">
-                    <Checkbox
-                      checked={formData.isFeatured ?? false}
-                      onChange={(e) => handleInputChange('isFeatured', e.target.checked ?? false)}
-                      className="flex items-center gap-2 text-sm font-medium text-gray-700"
-                    >
-                      Featured
-                    </Checkbox>
-                  </Form.Item>
-                </div>
-              </Col>
-            </Row>
+                <Form.Item name="isFeatured" valuePropName="checked">
+                  <Checkbox
+                    checked={Boolean(formData.isFeatured ?? false)}
+                    onChange={(e) => handleInputChange('isFeatured', e?.target?.checked ?? false)}
+                    className="flex items-center gap-2 text-sm font-medium text-gray-700"
+                  >
+                    Featured
+                  </Checkbox>
+                </Form.Item>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -662,7 +972,7 @@ const UpdatePujaModal: React.FC<UpdatePujaModalProps> = ({ pujaId, visible, onCa
           <Button
             type="primary"
             htmlType="submit"
-            loading={isLoading}
+            loading={false}
             className="bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white px-6 py-2 rounded-lg font-medium border-none"
           >
             Update Puja

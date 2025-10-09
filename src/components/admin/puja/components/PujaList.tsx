@@ -1,10 +1,10 @@
-'use client';
-
 import React, { useState, useEffect } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
+import { Modal } from 'antd';
 import { RootState } from '@/store';
-import { fetchPujas, updatePuja } from '@/store/slices/pujaSlice';
-import Button from '@/components/ui/Button';
+import { fetchPujas, fetchPujaById, deletePuja } from '@/store/slices/pujaSlice';
+import UpdatePujaModal from './UpdatePujaModal';
+import ViewPujaModal from './ViewPujaModal';
 import type { AppDispatch } from '@/store';
 
 interface Puja {
@@ -32,259 +32,360 @@ const PujaList: React.FC<PujaListProps> = ({ viewMode = 'grid' }) => {
   const dispatch = useDispatch<AppDispatch>();
   const { pujas: rawPujas, isLoading } = useSelector((state: RootState) => state.puja);
   
-  // Transform raw pujas to match the component interface with null handling
-  const pujas: Puja[] = (rawPujas ?? []).map((puja: any) => ({
-    id: puja?.id ?? puja?._id ?? '',
-    pujaName: puja?.name ?? '',
-    subHeading: puja?.sub_heading ?? '',
-    templeAddress: puja?.temple_address ?? '',
-    category: puja?.category ?? 'general',
-    prasadPrice: puja?.prasad_price ?? 0,
-    dakshinaPrice: (() => {
-      const pricesStr = puja?.dakshina_prices_inr ?? '';
-      if (!pricesStr) return 0;
-      const firstPrice = pricesStr.split(',')[0]?.trim();
-      return parseInt(firstPrice ?? '0') || 0;
-    })(),
-    manokamnaPrice: (() => {
-      const pricesStr = puja?.manokamna_prices_inr ?? '';
-      if (!pricesStr) return 0;
-      const firstPrice = pricesStr.split(',')[0]?.trim();
-      return parseInt(firstPrice ?? '0') || 0;
-    })(),
-    about: puja?.description ?? '',
-    isActive: puja?.is_active ?? true,
-    isFeatured: puja?.is_featured ?? false,
-    pujaImages: puja?.puja_images ?? [],
-    createdDate: puja?.created_date ?? new Date().toISOString().split('T')[0],
-    selectedPlan: puja?.selected_plan ?? 'Basic Puja Package',
-  }));
+  // Transform raw pujas to match the component interface with comprehensive null handling
+  const pujas: Puja[] = React.useMemo(() => {
+    if (!Array.isArray(rawPujas)) {
+      console.warn('rawPujas is not an array:', rawPujas);
+      return [];
+    }
+    
+    return rawPujas
+      .filter(puja => puja && typeof puja === 'object') // Filter out null/undefined/invalid entries
+      .map((puja: any) => {
+        try {
+          return {
+            id: (puja?.id ?? puja?._id ?? '').toString().trim() || `temp-${Date.now()}-${Math.random()}`,
+            pujaName: (puja?.name ?? '').toString().trim(),
+            subHeading: (puja?.sub_heading ?? '').toString().trim(),
+            templeAddress: (puja?.temple_address ?? '').toString().trim(),
+            category: (puja?.category ?? 'general').toString().trim(),
+            prasadPrice: (() => {
+              const price = puja?.prasad_price;
+              if (price === null || price === undefined) return 0;
+              const numPrice = Number(price);
+              return isNaN(numPrice) ? 0 : Math.max(0, numPrice);
+            })(),
+            dakshinaPrice: (() => {
+              try {
+                const pricesStr = (puja?.dakshina_prices_inr ?? '').toString().trim();
+                if (!pricesStr) return 0;
+                const firstPrice = pricesStr.split(',')[0]?.trim();
+                if (!firstPrice) return 0;
+                const numPrice = parseInt(firstPrice, 10);
+                return isNaN(numPrice) ? 0 : Math.max(0, numPrice);
+              } catch (error) {
+                console.warn('Error parsing dakshina price:', error);
+                return 0;
+              }
+            })(),
+            manokamnaPrice: (() => {
+              try {
+                const pricesStr = (puja?.manokamna_prices_inr ?? '').toString().trim();
+                if (!pricesStr) return 0;
+                const firstPrice = pricesStr.split(',')[0]?.trim();
+                if (!firstPrice) return 0;
+                const numPrice = parseInt(firstPrice, 10);
+                return isNaN(numPrice) ? 0 : Math.max(0, numPrice);
+              } catch (error) {
+                console.warn('Error parsing manokamna price:', error);
+                return 0;
+              }
+            })(),
+            about: (puja?.description ?? '').toString().trim(),
+            isActive: Boolean(puja?.is_active ?? true),
+            isFeatured: Boolean(puja?.is_featured ?? false),
+            pujaImages: (() => {
+              const images = puja?.puja_images;
+              if (!Array.isArray(images)) return [];
+              return images.filter(img => img && typeof img === 'string').map(img => img.toString().trim()).filter(Boolean);
+            })(),
+            createdDate: (() => {
+              try {
+                const date = puja?.created_date;
+                if (!date) return new Date().toISOString().split('T')[0];
+                const parsedDate = new Date(date);
+                return isNaN(parsedDate.getTime()) ? new Date().toISOString().split('T')[0] : parsedDate.toISOString().split('T')[0];
+              } catch (error) {
+                return new Date().toISOString().split('T')[0];
+              }
+            })(),
+            selectedPlan: (puja?.selected_plan ?? 'Basic Puja Package').toString().trim(),
+          };
+        } catch (error) {
+          console.error('Error transforming puja data:', error, puja);
+          // Return a safe default object for corrupted data
+          return {
+            id: `error-${Date.now()}-${Math.random()}`,
+            pujaName: 'Error Loading Puja',
+            subHeading: '',
+            templeAddress: '',
+            category: 'general',
+            prasadPrice: 0,
+            dakshinaPrice: 0,
+            manokamnaPrice: 0,
+            about: 'Error loading puja data',
+            isActive: false,
+            isFeatured: false,
+            pujaImages: [],
+            createdDate: new Date().toISOString().split('T')[0],
+            selectedPlan: 'Basic Puja Package',
+          };
+        }
+      })
+      .filter(puja => puja.id && !puja.id.startsWith('error-')); // Filter out error entries
+  }, [rawPujas]);
 
   const [selectedPujaId, setSelectedPujaId] = useState<string | null>(null);
-  const [isModalVisible, setIsModalVisible] = useState(false);
+  const [isUpdateModalVisible, setIsUpdateModalVisible] = useState(false);
   const [isViewModalVisible, setIsViewModalVisible] = useState(false);
   const [selectedPuja, setSelectedPuja] = useState<any>(null);
-  const [formData, setFormData] = useState<any>({
-    name: '',
-    sub_heading: '',
-    description: '',
-    date: null,
-    time: null,
-    temple_image_url: '',
-    temple_address: '',
-    temple_description: '',
-    prasad_price: 0,
-    is_prasad_active: false,
-    dakshina_prices_inr: '',
-    dakshina_prices_usd: '',
-    is_dakshina_active: false,
-    manokamna_prices_inr: '',
-    manokamna_prices_usd: '',
-    is_manokamna_active: false,
-    category: 'general',
-    is_active: true,
-    is_featured: false,
-    benefits: [
-      { title: '', description: '' },
-      { title: '', description: '' },
-      { title: '', description: '' },
-      { title: '', description: '' },
-    ],
-    selected_plan_ids: [],
-    puja_images: [],
-  });
-
-  useEffect(() => {
-    dispatch(fetchPujas() as any);
-  }, [dispatch]);
-
-  const handleEditClick = (pujaId: string, pujaData: any) => {
-    console.log('Edit button clicked with pujaId:', pujaId);
-    if (!pujaId) {
-      console.error('Puja ID is missing');
-      return;
-    }
-    setSelectedPujaId(pujaId);
-    setSelectedPuja(pujaData);
-    
-    // Prefill form data with puja details
-    setFormData({
-      name: pujaData.pujaName || '',
-      sub_heading: pujaData.subHeading || '',
-      description: pujaData.about || '',
-      date: null,
-      time: null,
-      temple_image_url: pujaData.templeImage || '',
-      temple_address: pujaData.templeAddress || '',
-      temple_description: pujaData.templeDescription || '',
-      prasad_price: pujaData.prasadPrice || 0,
-      is_prasad_active: pujaData.prasadStatus || false,
-      dakshina_prices_inr: pujaData.dakshinaPrices || '',
-      dakshina_prices_usd: pujaData.dakshinaPricesUSD || '',
-      is_dakshina_active: pujaData.dakshinaStatus || false,
-      manokamna_prices_inr: pujaData.manokamnaPrices || '',
-      manokamna_prices_usd: pujaData.manokamnaPricesUSD || '',
-      is_manokamna_active: pujaData.manokamnaStatus || false,
-      category: pujaData.category || 'general',
-      is_active: pujaData.isActive !== undefined ? pujaData.isActive : true,
-      is_featured: pujaData.isFeatured || false,
-      benefits: pujaData.benefits || [
-        { title: '', description: '' },
-        { title: '', description: '' },
-        { title: '', description: '' },
-        { title: '', description: '' },
-      ],
-      selected_plan_ids: pujaData.selectedPlanIds || [],
-      puja_images: pujaData.pujaImages || [],
-    });
-    
-    setIsModalVisible(true);
-  };
-
-  const handleViewClick = (pujaData: any) => {
-    console.log('View button clicked with puja data:', pujaData);
-    setSelectedPuja(pujaData);
-    
-    // Prefill form data with puja details for viewing
-    setFormData({
-      name: pujaData.pujaName || '',
-      sub_heading: pujaData.subHeading || '',
-      description: pujaData.about || '',
-      date: null,
-      time: null,
-      temple_image_url: pujaData.templeImage || '',
-      temple_address: pujaData.templeAddress || '',
-      temple_description: pujaData.templeDescription || '',
-      prasad_price: pujaData.prasadPrice || 0,
-      is_prasad_active: pujaData.prasadStatus || false,
-      dakshina_prices_inr: pujaData.dakshinaPrices || '',
-      dakshina_prices_usd: pujaData.dakshinaPricesUSD || '',
-      is_dakshina_active: pujaData.dakshinaStatus || false,
-      manokamna_prices_inr: pujaData.manokamnaPrices || '',
-      manokamna_prices_usd: pujaData.manokamnaPricesUSD || '',
-      is_manokamna_active: pujaData.manokamnaStatus || false,
-      category: pujaData.category || 'general',
-      is_active: pujaData.isActive !== undefined ? pujaData.isActive : true,
-      is_featured: pujaData.isFeatured || false,
-      benefits: pujaData.benefits || [
-        { title: '', description: '' },
-        { title: '', description: '' },
-        { title: '', description: '' },
-        { title: '', description: '' },
-      ],
-      selected_plan_ids: pujaData.selectedPlanIds || [],
-      puja_images: pujaData.pujaImages || [],
-    });
-    
-    setIsViewModalVisible(true);
-  };
-
-  const handleModalClose = () => {
-    setIsModalVisible(false);
-    setSelectedPujaId(null);
-    setSelectedPuja(null);
-  };
-
-  const handleViewModalClose = () => {
-    setIsViewModalVisible(false);
-    setSelectedPuja(null);
-  };
-
-  const handleUpdateSuccess = () => {
-    dispatch(fetchPujas() as any);
-  };
-
-  const handleInputChange = (field: string, value: any) => {
-    setFormData((prev: any) => ({
-      ...prev,
-      [field]: value
-    }));
-  };
-
-  const handleBenefitChange = (index: number, field: string, value: string) => {
-    const newBenefits = [...formData.benefits];
-    newBenefits[index] = { ...newBenefits[index], [field]: value };
-    setFormData((prev: any) => ({
-      ...prev,
-      benefits: newBenefits
-    }));
-  };
-
-  const handleSubmit = async () => {
-    try {
-      if (!selectedPujaId) {
-        console.error('Puja ID is missing');
-        return;
-      }
-      
-      const updateData = {
-        id: selectedPujaId,
-        name: formData.name,
-        sub_heading: formData.sub_heading,
-        description: formData.description,
-        date: null,
-        time: null,
-        temple_image_url: formData.temple_image_url,
-        temple_address: formData.temple_address,
-        temple_description: formData.temple_description,
-        prasad_price: formData.prasad_price,
-        is_prasad_active: formData.is_prasad_active,
-        dakshina_prices_inr: formData.dakshina_prices_inr,
-        dakshina_prices_usd: formData.dakshina_prices_usd,
-        is_dakshina_active: formData.is_dakshina_active,
-        manokamna_prices_inr: formData.manokamna_prices_inr,
-        manokamna_prices_usd: formData.manokamna_prices_usd,
-        is_manokamna_active: formData.is_manokamna_active,
-        category: formData.category,
-        is_active: formData.is_active,
-        is_featured: formData.is_featured,
-        benefits: formData.benefits,
-        selected_plan_ids: formData.selected_plan_ids,
-      };
-      
-      await dispatch(updatePuja(updateData) as any);
-      // Refresh the puja list after successful update
-      dispatch(fetchPujas() as any);
-      handleModalClose();
-    } catch (error) {
-      console.error('Error updating puja:', error);
-    }
-  };
-
+  const [updatePujaData, setUpdatePujaData] = useState<any>(null); // Data for update modal
+  const [viewPujaData, setViewPujaData] = useState<any>(null); // Data for view modal
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [isLoadingUpdate, setIsLoadingUpdate] = useState(false);
+  const [isLoadingView, setIsLoadingView] = useState(false);
+  const [isLoadingDelete, setIsLoadingDelete] = useState<string | null>(null); // Track which puja is being deleted
 
-  // Filter pujas based on search term, category, and status with null checks
+  useEffect(() => {
+    dispatch(fetchPujas());
+  }, [dispatch]);
+
+  // Function to handle update modal opening
+  const onUpdateModalOpen = async (pujaId: string, pujaData: any) => {
+    console.log('onUpdateModalOpen called for pujaId:', pujaId);
+    
+    try {
+      const safePujaId = (pujaId ?? '').toString().trim();
+      if (!safePujaId) {
+        console.error('Invalid puja ID for update');
+        return;
+      }
+
+      setIsLoadingUpdate(true);
+      setSelectedPujaId(safePujaId);
+      setSelectedPuja(pujaData);
+      
+      // Call API to fetch full puja details
+      const result = await dispatch(fetchPujaById(safePujaId));
+      
+      if (fetchPujaById.fulfilled.match(result)) {
+        console.log('Puja data fetched successfully:', result.payload);
+        setUpdatePujaData(result.payload);
+        setIsUpdateModalVisible(true);
+      } else {
+        console.error('Failed to fetch puja data:', result);
+      }
+    } catch (error) {
+      console.error('Error in onUpdateModalOpen:', error);
+    } finally {
+      setIsLoadingUpdate(false);
+    }
+  };
+
+  // Function to handle update modal closing
+  const onUpdateModalClose = () => {
+    console.log('onUpdateModalClose called');
+    
+    try {
+      // Clear all update-related states
+      setIsUpdateModalVisible(false);
+      setSelectedPujaId(null);
+      setSelectedPuja(null);
+      setUpdatePujaData(null);
+      setIsLoadingUpdate(false);
+    } catch (error) {
+      console.error('Error in onUpdateModalClose:', error);
+    }
+  };
+
+  // Function to handle view modal opening
+  const onViewModalOpen = async (pujaId: string, pujaData: any) => {
+    console.log('onViewModalOpen called for pujaId:', pujaId);
+    
+    try {
+      const safePujaId = (pujaId ?? '').toString().trim();
+      if (!safePujaId) {
+        console.error('Invalid puja ID for view');
+        return;
+      }
+
+      setIsLoadingView(true);
+      setSelectedPuja(pujaData);
+      
+      // Call API to fetch full puja details
+      const result = await dispatch(fetchPujaById(safePujaId));
+      
+      if (fetchPujaById.fulfilled.match(result)) {
+        console.log('Puja data fetched successfully for view:', result.payload);
+        setViewPujaData(result.payload);
+        setIsViewModalVisible(true);
+      } else {
+        console.error('Failed to fetch puja data for view:', result);
+      }
+    } catch (error) {
+      console.error('Error in onViewModalOpen:', error);
+    } finally {
+      setIsLoadingView(false);
+    }
+  };
+
+  // Function to handle view modal closing
+  const onViewModalClose = () => {
+    console.log('onViewModalClose called');
+    
+    try {
+      // Clear all view-related states
+      setIsViewModalVisible(false);
+      setSelectedPuja(null);
+      setViewPujaData(null);
+      setIsLoadingView(false);
+    } catch (error) {
+      console.error('Error in onViewModalClose:', error);
+    }
+  };
+
+  const handleUpdateSuccess = () => {
+    dispatch(fetchPujas());
+    onUpdateModalClose();
+  };
+
+  // Function to handle puja deletion
+  const handleDeletePuja = async (pujaId: string, pujaName: string) => {
+    try {
+      const safePujaId = (pujaId ?? '').toString().trim();
+      const safePujaName = (pujaName ?? '').toString().trim();
+      
+      if (!safePujaId) {
+        console.error('Invalid puja ID for deletion');
+        return;
+      }
+
+      // Show Ant Design confirmation modal
+      Modal.confirm({
+        title: 'Delete Puja',
+        content: (
+          <div>
+            <p>Are you sure you want to delete the puja <strong>"{safePujaName}"</strong>?</p>
+            <p className="text-red-600 text-sm mt-2">This action cannot be undone.</p>
+          </div>
+        ),
+        icon: <span className="text-red-500">🗑️</span>,
+        okText: 'Yes, Delete',
+        cancelText: 'Cancel',
+        okType: 'danger',
+        centered: true,
+        onOk: async () => {
+          try {
+            setIsLoadingDelete(safePujaId);
+            console.log('Deleting puja with ID:', safePujaId);
+            
+            const result = await dispatch(deletePuja(safePujaId));
+            
+            if (deletePuja.fulfilled.match(result)) {
+              console.log('Puja deleted successfully');
+              // Fetch updated puja list from server to ensure data consistency
+              await dispatch(fetchPujas());
+              
+              // Show success message
+              Modal.success({
+                title: 'Puja Deleted',
+                content: `"${safePujaName}" has been successfully deleted.`,
+                centered: true,
+              });
+            } else {
+              console.error('Failed to delete puja:', result.payload);
+              Modal.error({
+                title: 'Delete Failed',
+                content: 'Failed to delete puja. Please try again.',
+                centered: true,
+              });
+            }
+          } catch (error) {
+            console.error('Error in delete operation:', error);
+            Modal.error({
+              title: 'Error',
+              content: 'An error occurred while deleting the puja.',
+              centered: true,
+            });
+          } finally {
+            setIsLoadingDelete(null);
+          }
+        },
+        onCancel: () => {
+          console.log('Delete operation cancelled');
+        },
+      });
+    } catch (error) {
+      console.error('Error in handleDeletePuja:', error);
+      Modal.error({
+        title: 'Error',
+        content: 'An error occurred while preparing to delete the puja.',
+        centered: true,
+      });
+    }
+  };
+
+  // Filter pujas based on search term, category, and status with comprehensive null checks
   const filteredPujas = (pujas ?? []).filter(puja => {
-    const pujaName = puja?.pujaName ?? '';
-    const subHeading = puja?.subHeading ?? '';
-    const templeAddress = puja?.templeAddress ?? '';
+    // Ensure puja object exists and has basic structure
+    if (!puja || typeof puja !== 'object') {
+      return false;
+    }
+
+    const pujaName = (puja?.pujaName ?? '').toString().trim();
+    const subHeading = (puja?.subHeading ?? '').toString().trim();
+    const templeAddress = (puja?.templeAddress ?? '').toString().trim();
+    const searchTermSafe = (searchTerm ?? '').toString().trim();
     
-    const matchesSearch = pujaName.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                         subHeading.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         templeAddress.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesSearch = searchTermSafe === '' || 
+                         pujaName.toLowerCase().includes(searchTermSafe.toLowerCase()) || 
+                         subHeading.toLowerCase().includes(searchTermSafe.toLowerCase()) ||
+                         templeAddress.toLowerCase().includes(searchTermSafe.toLowerCase());
     
-    const matchesCategory = categoryFilter === 'all' || puja?.category === categoryFilter;
+    const pujaCategory = (puja?.category ?? 'general').toString().trim();
+    const matchesCategory = categoryFilter === 'all' || pujaCategory === categoryFilter;
     
+    const isActive = Boolean(puja?.isActive);
     const matchesStatus = statusFilter === 'all' || 
-                         (statusFilter === 'active' && puja?.isActive) || 
-                         (statusFilter === 'inactive' && !puja?.isActive);
+                         (statusFilter === 'active' && isActive) || 
+                         (statusFilter === 'inactive' && !isActive);
     
     return matchesSearch && matchesCategory && matchesStatus;
   });
 
-  const formatCurrency = (amount: number | null | undefined) => {
-    const safeAmount = amount ?? 0;
-    return new Intl.NumberFormat('hi-IN', {
-      style: 'currency',
-      currency: 'INR',
-      maximumFractionDigits: 0
-    }).format(safeAmount);
+  const formatCurrency = (amount: number | string | null | undefined) => {
+    try {
+      let safeAmount = 0;
+      
+      if (amount === null || amount === undefined) {
+        safeAmount = 0;
+      } else if (typeof amount === 'string') {
+        const parsed = parseFloat(amount.replace(/[^\d.-]/g, ''));
+        safeAmount = isNaN(parsed) ? 0 : Math.max(0, parsed);
+      } else if (typeof amount === 'number') {
+        safeAmount = isNaN(amount) ? 0 : Math.max(0, amount);
+      }
+      
+      return new Intl.NumberFormat('hi-IN', {
+        style: 'currency',
+        currency: 'INR',
+        maximumFractionDigits: 0
+      }).format(safeAmount);
+    } catch (error) {
+      console.warn('Error formatting currency:', error, amount);
+      return '₹0';
+    }
   };
 
   if (isLoading) {
-    return <div className="flex justify-center items-center py-8">Loading pujas...</div>;
+    return (
+      <div className="flex justify-center items-center py-8">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-600 mr-3"></div>
+        <span className="text-gray-600">Loading pujas...</span>
+      </div>
+    );
+  }
+
+  if (!Array.isArray(pujas) || pujas.length === 0) {
+    return (
+      <div className="text-center py-12">
+        <div className="text-gray-400 text-6xl mb-4">🛕</div>
+        <h3 className="text-lg font-medium text-gray-900 mb-2">No pujas available</h3>
+        <p className="text-gray-500">Start by creating your first puja</p>
+      </div>
+    );
   }
 
   return (
@@ -296,13 +397,13 @@ const PujaList: React.FC<PujaListProps> = ({ viewMode = 'grid' }) => {
             type="text"
             placeholder="Search pujas..."
             value={searchTerm ?? ''}
-            onChange={(e) => setSearchTerm(e.target.value ?? '')}
+            onChange={(e) => setSearchTerm(e?.target?.value?.toString()?.trim() ?? '')}
             className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent text-sm text-black placeholder-gray-400"
           />
         </div>
         <select 
           value={categoryFilter}
-          onChange={(e) => setCategoryFilter(e.target.value ?? 'all')}
+          onChange={(e) => setCategoryFilter(e?.target?.value?.toString()?.trim() ?? 'all')}
           className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent text-sm"
         >
           <option value="all">All Categories</option>
@@ -314,7 +415,7 @@ const PujaList: React.FC<PujaListProps> = ({ viewMode = 'grid' }) => {
         </select>
         <select 
           value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value ?? 'all')}
+          onChange={(e) => setStatusFilter(e?.target?.value?.toString()?.trim() ?? 'all')}
           className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent text-sm"
         >
           <option value="all">All Status</option>
@@ -326,7 +427,19 @@ const PujaList: React.FC<PujaListProps> = ({ viewMode = 'grid' }) => {
       {/* Puja List */}
       {viewMode === 'grid' ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {(filteredPujas ?? []).map((puja) => (
+          {(filteredPujas ?? []).length === 0 ? (
+            <div className="col-span-full text-center py-12">
+              <div className="text-gray-400 text-6xl mb-4">🔍</div>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">No pujas found</h3>
+              <p className="text-gray-500">Try adjusting your search or filter criteria</p>
+            </div>
+          ) : (
+            (filteredPujas ?? []).map((puja) => {
+              // Skip rendering if puja data is invalid
+              if (!puja || typeof puja !== 'object' || !puja.id) {
+                return null;
+              }
+              return (
             <div key={puja?.id ?? ''} className="border border-gray-200 rounded-lg p-4 hover:shadow-lg transition-all duration-200 bg-white">
               <div className="aspect-video bg-gradient-to-br from-orange-100 to-orange-200 rounded-lg mb-4 flex items-center justify-center relative overflow-hidden">
                 {puja?.pujaImages && (puja.pujaImages.length ?? 0) > 0 ? (
@@ -397,35 +510,71 @@ const PujaList: React.FC<PujaListProps> = ({ viewMode = 'grid' }) => {
                 </div>
                 
                 <div className="text-xs text-gray-500 border-t pt-2 mt-3">
-                  Created: {new Date(puja?.createdDate ?? '').toLocaleDateString()}
+                  Created: {(() => {
+                    try {
+                      const date = puja?.createdDate;
+                      if (!date) return 'N/A';
+                      const parsedDate = new Date(date);
+                      return isNaN(parsedDate.getTime()) ? 'Invalid Date' : parsedDate.toLocaleDateString();
+                    } catch (error) {
+                      return 'N/A';
+                    }
+                  })()}
                 </div>
               </div>
               
               <div className="flex gap-2 mt-4 pt-3 border-t border-gray-100">
                 <button 
                   onClick={(e) => {
-                    e.stopPropagation();
-                    handleEditClick(puja.id, puja);
+                    e?.stopPropagation?.();
+                    onUpdateModalOpen(puja.id, puja);
                   }}
-                  className="flex-1 bg-blue-50 hover:bg-blue-100 text-blue-600 py-2 px-3 rounded-lg text-sm font-medium transition-colors duration-200 flex items-center justify-center gap-1"
+                  disabled={!puja?.id || isLoadingUpdate}
+                  className="flex-1 bg-blue-50 hover:bg-blue-100 text-blue-600 py-2 px-3 rounded-lg text-sm font-medium transition-colors duration-200 flex items-center justify-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  <span>✏️</span> Edit
+                  {isLoadingUpdate ? (
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                  ) : (
+                    <>
+                      <span>✏️</span> Edit
+                    </>
+                  )}
                 </button>
                 <button 
                   onClick={(e) => {
-                    e.stopPropagation();
-                    handleViewClick(puja);
+                    e?.stopPropagation?.();
+                    onViewModalOpen(puja.id, puja);
                   }}
-                  className="flex-1 bg-gray-50 hover:bg-gray-100 text-gray-600 py-2 px-3 rounded-lg text-sm font-medium transition-colors duration-200 flex items-center justify-center gap-1"
+                  disabled={!puja || isLoadingView}
+                  className="flex-1 bg-gray-50 hover:bg-gray-100 text-gray-600 py-2 px-3 rounded-lg text-sm font-medium transition-colors duration-200 flex items-center justify-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  <span>👁️</span> View
+                  {isLoadingView ? (
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-600"></div>
+                  ) : (
+                    <>
+                      <span>👁️</span> View
+                    </>
+                  )}
                 </button>
-                <button className="bg-red-50 hover:bg-red-100 text-red-600 py-2 px-3 rounded-lg text-sm font-medium transition-colors duration-200">
-                  🗑️
+                <button 
+                  onClick={(e) => {
+                    e?.stopPropagation?.();
+                    handleDeletePuja(puja.id, puja.pujaName);
+                  }}
+                  disabled={!puja?.id || isLoadingDelete === puja.id}
+                  className="bg-red-50 hover:bg-red-100 text-red-600 py-2 px-3 rounded-lg text-sm font-medium transition-colors duration-200 flex items-center justify-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isLoadingDelete === puja.id ? (
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-red-600"></div>
+                  ) : (
+                    <>🗑️</>
+                  )}
                 </button>
               </div>
             </div>
-          ))}
+              );
+            })
+          )}
         </div>
       ) : (
         <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
@@ -454,7 +603,21 @@ const PujaList: React.FC<PujaListProps> = ({ viewMode = 'grid' }) => {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {(filteredPujas ?? []).map((puja) => (
+                {(filteredPujas ?? []).length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="px-6 py-12 text-center">
+                      <div className="text-gray-400 text-4xl mb-4">🔍</div>
+                      <h3 className="text-lg font-medium text-gray-900 mb-2">No pujas found</h3>
+                      <p className="text-gray-500">Try adjusting your search or filter criteria</p>
+                    </td>
+                  </tr>
+                ) : (
+                  (filteredPujas ?? []).map((puja) => {
+                    // Skip rendering if puja data is invalid
+                    if (!puja || typeof puja !== 'object' || !puja.id) {
+                      return null;
+                    }
+                    return (
                   <tr key={puja?.id ?? ''} className="hover:bg-gray-50">
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center">
@@ -466,7 +629,16 @@ const PujaList: React.FC<PujaListProps> = ({ viewMode = 'grid' }) => {
                         <div className="ml-4">
                           <div className="text-sm font-medium text-gray-900 font-['Philosopher']">{puja?.pujaName ?? ''}</div>
                           <div className="text-sm text-orange-600">{puja?.subHeading ?? ''}</div>
-                          <div className="text-xs text-gray-500">Created: {new Date(puja?.createdDate ?? '').toLocaleDateString()}</div>
+                          <div className="text-xs text-gray-500">Created: {(() => {
+                            try {
+                              const date = puja?.createdDate;
+                              if (!date) return 'N/A';
+                              const parsedDate = new Date(date);
+                              return isNaN(parsedDate.getTime()) ? 'Invalid Date' : parsedDate.toLocaleDateString();
+                            } catch (error) {
+                              return 'N/A';
+                            }
+                          })()}</div>
                         </div>
                       </div>
                     </td>
@@ -524,38 +696,62 @@ const PujaList: React.FC<PujaListProps> = ({ viewMode = 'grid' }) => {
                       <div className="flex space-x-2">
                         <button 
                           onClick={(e) => {
-                            e.stopPropagation();
-                            handleEditClick(puja.id, puja);
+                            e?.stopPropagation?.();
+                            onUpdateModalOpen(puja?.id, puja);
                           }}
-                          className="text-blue-600 hover:text-blue-900 p-1 rounded hover:bg-blue-100" 
+                          disabled={!puja?.id || isLoadingUpdate}
+                          className="text-blue-600 hover:text-blue-900 p-1 rounded hover:bg-blue-100 disabled:opacity-50 disabled:cursor-not-allowed" 
                           title="Edit"
                         >
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                          </svg>
+                          {isLoadingUpdate ? (
+                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                          ) : (
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                            </svg>
+                          )}
                         </button>
                         <button 
                           onClick={(e) => {
-                            e.stopPropagation();
-                            handleViewClick(puja);
+                            e?.stopPropagation?.();
+                            onViewModalOpen(puja?.id, puja);
                           }}
-                          className="text-gray-600 hover:text-gray-900 p-1 rounded hover:bg-gray-100" 
+                          disabled={!puja || isLoadingView}
+                          className="text-gray-600 hover:text-gray-900 p-1 rounded hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed" 
                           title="View"
                         >
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                          </svg>
+                          {isLoadingView ? (
+                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-600"></div>
+                          ) : (
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 616 0z" />
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                            </svg>
+                          )}
                         </button>
-                        <button className="text-red-600 hover:text-red-900 p-1 rounded hover:bg-red-100" title="Delete">
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                          </svg>
+                        <button 
+                          onClick={(e) => {
+                            e?.stopPropagation?.();
+                            handleDeletePuja(puja.id, puja.pujaName);
+                          }}
+                          disabled={!puja?.id || isLoadingDelete === puja.id}
+                          className="text-red-600 hover:text-red-900 p-1 rounded hover:bg-red-100 disabled:opacity-50 disabled:cursor-not-allowed" 
+                          title="Delete"
+                        >
+                          {isLoadingDelete === puja.id ? (
+                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-red-600"></div>
+                          ) : (
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                          )}
                         </button>
                       </div>
                     </td>
                   </tr>
-                ))}
+                    );
+                  })
+                )}
               </tbody>
             </table>
           </div>
@@ -563,645 +759,24 @@ const PujaList: React.FC<PujaListProps> = ({ viewMode = 'grid' }) => {
       )}
 
       {/* Update Puja Modal */}
-      {/* <UpdatePujaModal
-        pujaId={selectedPujaId || ''}
-        visible={isModalVisible}
-        onCancel={handleModalClose}
-        onSuccess={handleUpdateSuccess}
-      /> */}
-
-      {/* Update Puja Modal - Tailwind Implementation */}
-      {isModalVisible && selectedPuja && (
-        <div className="fixed inset-0 z-50 overflow-y-auto">
-          <div className="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
-            {/* Background overlay */}
-            <div className="fixed inset-0 transition-opacity bg-gray-500 bg-opacity-75" aria-hidden="true" onClick={handleModalClose}></div>
-            
-            {/* This element is to trick the browser into centering the modal contents. */}
-            <span className="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
-            
-            {/* Modal panel */}
-            <div className="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-6xl sm:w-full">
-              <div className="bg-gradient-to-r from-orange-50 to-orange-100 px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
-                <div className="sm:flex sm:items-start">
-                  <div className="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left w-full">
-                    <div className="flex items-center justify-between border-b border-orange-200 pb-4">
-                      <h3 className="text-2xl leading-6 font-bold text-orange-800 flex items-center">
-                        <span className="mr-2 text-2xl">🛕</span>
-                        <span className="font-['Philosopher']">Update Puja</span>
-                      </h3>
-                      <button
-                        type="button"
-                        className="text-orange-400 hover:text-orange-600 focus:outline-none"
-                        onClick={handleModalClose}
-                      >
-                        <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
-                        </svg>
-                      </button>
-                    </div>
-                    <div className="mt-4">
-                      <div className="bg-white p-4 rounded-lg mb-6 border border-orange-200 shadow-sm">
-                        <h4 className="font-medium text-orange-800 text-lg font-['Philosopher']">Puja: {formData.name}</h4>
-                        <p className="text-sm text-orange-600">ID: {selectedPujaId}</p>
-                      </div>
-                      
-                      <div className="bg-white rounded-xl border border-orange-200 p-6 shadow-sm">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                          {/* Section 1: Basic Details */}
-                          <div className="md:col-span-2">
-                            <h3 className="text-lg font-semibold text-orange-800 mb-4 font-['Philosopher'] flex items-center gap-2">
-                              <span className="text-xl">🛕</span>
-                              1. Puja Details
-                            </h3>
-                            
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                              <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Puja Name</label>
-                                <input
-                                  type="text"
-                                  value={formData.name || ''}
-                                  onChange={(e) => handleInputChange('name', e.target.value)}
-                                  className="w-full px-4 py-3 border border-orange-200 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent text-black placeholder-gray-400"
-                                  placeholder="Enter puja name"
-                                />
-                              </div>
-                              
-                              <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Sub Heading</label>
-                                <input
-                                  type="text"
-                                  value={formData.sub_heading || ''}
-                                  onChange={(e) => handleInputChange('sub_heading', e.target.value)}
-                                  className="w-full px-4 py-3 border border-orange-200 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent text-black placeholder-gray-400"
-                                  placeholder="Enter puja sub heading"
-                                />
-                              </div>
-                              
-                              <div className="md:col-span-2">
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
-                                <textarea
-                                  rows={4}
-                                  value={formData.description || ''}
-                                  onChange={(e) => handleInputChange('description', e.target.value)}
-                                  className="w-full px-4 py-3 border border-orange-200 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent text-black placeholder-gray-400"
-                                  placeholder="Enter detailed description about the puja"
-                                />
-                              </div>
-                            </div>
-                          </div>
-                          
-                          {/* Section 2: Temple Details */}
-                          <div className="md:col-span-2">
-                            <h3 className="text-lg font-semibold text-indigo-800 mb-4 font-['Philosopher'] flex items-center gap-2">
-                              <span className="text-xl">🏦</span>
-                              2. Temple Details
-                            </h3>
-                            
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                              <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Temple Image URL</label>
-                                <input
-                                  type="text"
-                                  value={formData.temple_image_url || ''}
-                                  onChange={(e) => handleInputChange('temple_image_url', e.target.value)}
-                                  className="w-full px-4 py-3 border border-indigo-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-black placeholder-gray-400"
-                                  placeholder="Enter temple image URL"
-                                />
-                              </div>
-                              
-                              <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Temple Address</label>
-                                <input
-                                  type="text"
-                                  value={formData.temple_address || ''}
-                                  onChange={(e) => handleInputChange('temple_address', e.target.value)}
-                                  className="w-full px-4 py-3 border border-indigo-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-black placeholder-gray-400"
-                                  placeholder="Enter complete temple address"
-                                />
-                              </div>
-                              
-                              <div className="md:col-span-2">
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Temple Description</label>
-                                <textarea
-                                  rows={4}
-                                  value={formData.temple_description || ''}
-                                  onChange={(e) => handleInputChange('temple_description', e.target.value)}
-                                  className="w-full px-4 py-3 border border-indigo-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-black placeholder-gray-400"
-                                  placeholder="Enter temple description, history, and significance"
-                                />
-                              </div>
-                            </div>
-                          </div>
-                          
-                          {/* Section 3: Benefits */}
-                          <div className="md:col-span-2">
-                            <h3 className="text-lg font-semibold text-green-800 mb-4 font-['Philosopher'] flex items-center gap-2">
-                              <span className="text-xl">✨</span>
-                              3. Puja Benefits
-                            </h3>
-                            
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                              {formData.benefits.map((benefit: any, index: number) => (
-                                <div key={index} className="bg-green-50 p-4 rounded-lg border border-green-200">
-                                  <h4 className="font-medium text-green-800 mb-3">Benefit {index + 1}</h4>
-                                  <div className="space-y-3">
-                                    <div>
-                                      <label className="block text-xs font-medium text-gray-700 mb-1">Title</label>
-                                      <input
-                                        type="text"
-                                        value={benefit.title || ''}
-                                        onChange={(e) => handleBenefitChange(index, 'title', e.target.value)}
-                                        className="w-full px-3 py-2 border border-green-200 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent text-sm"
-                                        placeholder={`Enter benefit ${index + 1} title`}
-                                      />
-                                    </div>
-                                    
-                                    <div>
-                                      <label className="block text-xs font-medium text-gray-700 mb-1">Description</label>
-                                      <textarea
-                                        rows={2}
-                                        value={benefit.description || ''}
-                                        onChange={(e) => handleBenefitChange(index, 'description', e.target.value)}
-                                        className="w-full px-3 py-2 border border-green-200 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent text-sm"
-                                        placeholder={`Enter benefit ${index + 1} description`}
-                                      />
-                                    </div>
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                          
-                          {/* Section 4: Prasad */}
-                          <div className="md:col-span-2">
-                            <h3 className="text-lg font-semibold text-yellow-800 mb-4 font-['Philosopher'] flex items-center gap-2">
-                              <span className="text-xl">🍯</span>
-                              4. Prasad
-                            </h3>
-                            
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                              <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Prasad Price (₹)</label>
-                                <input
-                                  type="number"
-                                  value={formData.prasad_price || 0}
-                                  onChange={(e) => handleInputChange('prasad_price', parseInt(e.target.value) || 0)}
-                                  className="w-full px-4 py-3 border border-yellow-200 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-transparent"
-                                />
-                              </div>
-                              
-                              <div className="flex items-center pt-6">
-                                <input
-                                  type="checkbox"
-                                  checked={formData.is_prasad_active || false}
-                                  onChange={(e) => handleInputChange('is_prasad_active', e.target.checked)}
-                                  className="h-5 w-5 text-yellow-600 focus:ring-yellow-500 border-yellow-300 rounded"
-                                />
-                                <label className="ml-2 block text-sm text-gray-700">Active Prasad Service</label>
-                              </div>
-                            </div>
-                          </div>
-                          
-                          {/* Section 5: Dakshina */}
-                          <div className="md:col-span-2">
-                            <h3 className="text-lg font-semibold text-red-800 mb-4 font-['Philosopher'] flex items-center gap-2">
-                              <span className="text-xl">💰</span>
-                              5. Dakshina
-                            </h3>
-                            
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                              <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Dakshina Prices (₹)</label>
-                                <input
-                                  type="text"
-                                  value={formData.dakshina_prices_inr || ''}
-                                  onChange={(e) => handleInputChange('dakshina_prices_inr', e.target.value)}
-                                  className="w-full px-4 py-3 border border-red-200 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
-                                  placeholder="e.g., 101,201,310,500"
-                                />
-                                <p className="text-xs text-gray-500 mt-1">Enter comma-separated values</p>
-                              </div>
-                              
-                              <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Dakshina Prices (USD)</label>
-                                <input
-                                  type="text"
-                                  value={formData.dakshina_prices_usd || ''}
-                                  onChange={(e) => handleInputChange('dakshina_prices_usd', e.target.value)}
-                                  className="w-full px-4 py-3 border border-red-200 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
-                                  placeholder="e.g., 1.5,2.5,4.0,6.0"
-                                />
-                                <p className="text-xs text-gray-500 mt-1">Optional: Manual USD pricing</p>
-                              </div>
-                              
-                              <div className="flex items-center pt-6">
-                                <input
-                                  type="checkbox"
-                                  checked={formData.is_dakshina_active || false}
-                                  onChange={(e) => handleInputChange('is_dakshina_active', e.target.checked)}
-                                  className="h-5 w-5 text-red-600 focus:ring-red-500 border-red-300 rounded"
-                                />
-                                <label className="ml-2 block text-sm text-gray-700">Active Dakshina</label>
-                              </div>
-                            </div>
-                          </div>
-                          
-                          {/* Section 6: Manokamna */}
-                          <div className="md:col-span-2">
-                            <h3 className="text-lg font-semibold text-pink-800 mb-4 font-['Philosopher'] flex items-center gap-2">
-                              <span className="text-xl">📜</span>
-                              6. Manokamna Parchi
-                            </h3>
-                            
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                              <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Manokamna Prices (₹)</label>
-                                <input
-                                  type="text"
-                                  value={formData.manokamna_prices_inr || ''}
-                                  onChange={(e) => handleInputChange('manokamna_prices_inr', e.target.value)}
-                                  className="w-full px-4 py-3 border border-pink-200 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent"
-                                  placeholder="e.g., 51,101,151,251"
-                                />
-                                <p className="text-xs text-gray-500 mt-1">Enter comma-separated values</p>
-                              </div>
-                              
-                              <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Manokamna Prices (USD)</label>
-                                <input
-                                  type="text"
-                                  value={formData.manokamna_prices_usd || ''}
-                                  onChange={(e) => handleInputChange('manokamna_prices_usd', e.target.value)}
-                                  className="w-full px-4 py-3 border border-pink-200 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent"
-                                  placeholder="e.g., 0.75,1.25,2.0,3.0"
-                                />
-                                <p className="text-xs text-gray-500 mt-1">Optional: Manual USD pricing</p>
-                              </div>
-                              
-                              <div className="flex items-center pt-6">
-                                <input
-                                  type="checkbox"
-                                  checked={formData.is_manokamna_active || false}
-                                  onChange={(e) => handleInputChange('is_manokamna_active', e.target.checked)}
-                                  className="h-5 w-5 text-pink-600 focus:ring-pink-500 border-pink-300 rounded"
-                                />
-                                <label className="ml-2 block text-sm text-gray-700">Active Manokamna</label>
-                              </div>
-                            </div>
-                          </div>
-                          
-                          {/* Section 7: Settings */}
-                          <div className="md:col-span-2">
-                            <h3 className="text-lg font-semibold text-gray-800 mb-4 font-['Philosopher'] flex items-center gap-2">
-                              <span className="text-xl">⚙️</span>
-                              7. Settings
-                            </h3>
-                            
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                              <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
-                                <select
-                                  value={formData.category || 'general'}
-                                  onChange={(e) => handleInputChange('category', e.target.value)}
-                                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-                                >
-                                  <option value="general">General</option>
-                                  <option value="prosperity">Prosperity</option>
-                                  <option value="health">Health</option>
-                                  <option value="education">Education</option>
-                                  <option value="marriage">Marriage</option>
-                                  <option value="spiritual">Spiritual</option>
-                                </select>
-                              </div>
-                              
-                              <div className="flex items-center pt-6">
-                                <input
-                                  type="checkbox"
-                                  checked={formData.is_active || true}
-                                  onChange={(e) => handleInputChange('is_active', e.target.checked)}
-                                  className="h-5 w-5 text-orange-600 focus:ring-orange-500 border-orange-300 rounded"
-                                />
-                                <label className="ml-2 block text-sm text-gray-700">Active</label>
-                              </div>
-                              
-                              <div className="flex items-center pt-6">
-                                <input
-                                  type="checkbox"
-                                  checked={formData.is_featured || false}
-                                  onChange={(e) => handleInputChange('is_featured', e.target.checked)}
-                                  className="h-5 w-5 text-orange-600 focus:ring-orange-500 border-orange-300 rounded"
-                                />
-                                <label className="ml-2 block text-sm text-gray-700">Featured</label>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <div className="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
-                <button
-                  type="button"
-                  className="w-full inline-flex justify-center rounded-lg border border-transparent shadow-sm px-6 py-3 bg-gradient-to-r from-orange-500 to-orange-600 text-base font-medium text-white hover:from-orange-600 hover:to-orange-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500 sm:ml-3 sm:w-auto sm:text-sm transition-all duration-200"
-                  onClick={handleSubmit}
-                >
-                  Update Puja
-                </button>
-                <button
-                  type="button"
-                  className="mt-3 w-full inline-flex justify-center rounded-lg border border-gray-300 shadow-sm px-6 py-3 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm transition-colors duration-200"
-                  onClick={handleModalClose}
-                >
-                  Cancel
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
+      {updatePujaData && (
+        <UpdatePujaModal
+          pujaId={selectedPujaId}
+          visible={isUpdateModalVisible}
+          pujaData={updatePujaData}
+          onCancel={onUpdateModalClose}
+          onSuccess={handleUpdateSuccess}
+        />
       )}
 
-      {/* View Puja Modal - Tailwind Implementation */}
-      {isViewModalVisible && selectedPuja && (
-        <div className="fixed inset-0 z-50 overflow-y-auto">
-          <div className="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
-            {/* Background overlay */}
-            <div className="fixed inset-0 transition-opacity bg-gray-500 bg-opacity-75" aria-hidden="true" onClick={handleViewModalClose}></div>
-            
-            {/* This element is to trick the browser into centering the modal contents. */}
-            <span className="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
-            
-            {/* Modal panel */}
-            <div className="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-6xl sm:w-full">
-              <div className="bg-gradient-to-r from-orange-50 to-orange-100 px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
-                <div className="sm:flex sm:items-start">
-                  <div className="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left w-full">
-                    <div className="flex items-center justify-between border-b border-orange-200 pb-4">
-                      <h3 className="text-2xl leading-6 font-bold text-orange-800 flex items-center">
-                        <span className="mr-2 text-2xl">🛕</span>
-                        <span className="font-['Philosopher']">Puja Details</span>
-                      </h3>
-                      <button
-                        type="button"
-                        className="text-orange-400 hover:text-orange-600 focus:outline-none"
-                        onClick={handleViewModalClose}
-                      >
-                        <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
-                        </svg>
-                      </button>
-                    </div>
-                    <div className="mt-4">
-                      <div className="bg-white p-4 rounded-lg mb-6 border border-orange-200 shadow-sm">
-                        <h4 className="font-medium text-orange-800 text-lg font-['Philosopher']">Puja: {formData.name}</h4>
-                        <p className="text-sm text-orange-600">ID: {selectedPuja.id}</p>
-                      </div>
-                      
-                      <div className="bg-white rounded-xl border border-orange-200 p-6 shadow-sm">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                          {/* Section 1: Basic Details */}
-                          <div className="md:col-span-2">
-                            <h3 className="text-lg font-semibold text-orange-800 mb-4 font-['Philosopher'] flex items-center gap-2">
-                              <span className="text-xl">🛕</span>
-                              1. Puja Details
-                            </h3>
-                            
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                              <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Puja Name</label>
-                                <div className="w-full px-4 py-3 bg-orange-50 border border-orange-200 rounded-lg text-black">
-                                  {formData.name || 'N/A'}
-                                </div>
-                              </div>
-                              
-                              <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Sub Heading</label>
-                                <div className="w-full px-4 py-3 bg-orange-50 border border-orange-200 rounded-lg text-black">
-                                  {formData.sub_heading || 'N/A'}
-                                </div>
-                              </div>
-                              
-                              <div className="md:col-span-2">
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
-                                <div className="w-full px-4 py-3 bg-orange-50 border border-orange-200 rounded-lg text-black min-h-24">
-                                  {formData.description || 'N/A'}
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                          
-                          {/* Section 2: Temple Details */}
-                          <div className="md:col-span-2">
-                            <h3 className="text-lg font-semibold text-indigo-800 mb-4 font-['Philosopher'] flex items-center gap-2">
-                              <span className="text-xl">🏦</span>
-                              2. Temple Details
-                            </h3>
-                            
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                              <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Temple Image URL</label>
-                                <div className="w-full px-4 py-3 bg-indigo-50 border border-indigo-200 rounded-lg text-black break-words">
-                                  {formData.temple_image_url || 'N/A'}
-                                </div>
-                              </div>
-                              
-                              <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Temple Address</label>
-                                <div className="w-full px-4 py-3 bg-indigo-50 border border-indigo-200 rounded-lg text-black">
-                                  {formData.temple_address || 'N/A'}
-                                </div>
-                              </div>
-                              
-                              <div className="md:col-span-2">
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Temple Description</label>
-                                <div className="w-full px-4 py-3 bg-indigo-50 border border-indigo-200 rounded-lg text-black min-h-24">
-                                  {formData.temple_description || 'N/A'}
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                          
-                          {/* Section 3: Benefits */}
-                          <div className="md:col-span-2">
-                            <h3 className="text-lg font-semibold text-green-800 mb-4 font-['Philosopher'] flex items-center gap-2">
-                              <span className="text-xl">✨</span>
-                              3. Puja Benefits
-                            </h3>
-                            
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                              {formData.benefits.map((benefit: any, index: number) => (
-                                <div key={index} className="bg-green-50 p-4 rounded-lg border border-green-200">
-                                  <h4 className="font-medium text-green-800 mb-3">Benefit {index + 1}</h4>
-                                  <div className="space-y-3">
-                                    <div>
-                                      <label className="block text-xs font-medium text-gray-700 mb-1">Title</label>
-                                      <div className="w-full px-3 py-2 bg-green-100 border border-green-200 rounded-lg text-sm">
-                                        {benefit.title || 'N/A'}
-                                      </div>
-                                    </div>
-                                    
-                                    <div>
-                                      <label className="block text-xs font-medium text-gray-700 mb-1">Description</label>
-                                      <div className="w-full px-3 py-2 bg-green-100 border border-green-200 rounded-lg text-sm min-h-16">
-                                        {benefit.description || 'N/A'}
-                                      </div>
-                                    </div>
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                          
-                          {/* Section 4: Prasad */}
-                          <div className="md:col-span-2">
-                            <h3 className="text-lg font-semibold text-yellow-800 mb-4 font-['Philosopher'] flex items-center gap-2">
-                              <span className="text-xl">🍯</span>
-                              4. Prasad
-                            </h3>
-                            
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                              <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Prasad Price (₹)</label>
-                                <div className="w-full px-4 py-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-                                  {formData.prasad_price || 0}
-                                </div>
-                              </div>
-                              
-                              <div className="flex items-center pt-6">
-                                <div className={`h-5 w-5 rounded-full ${formData.is_prasad_active ? 'bg-green-500' : 'bg-red-500'}`}></div>
-                                <label className="ml-2 block text-sm text-gray-700">
-                                  {formData.is_prasad_active ? 'Active' : 'Inactive'}
-                                </label>
-                              </div>
-                            </div>
-                          </div>
-                          
-                          {/* Section 5: Dakshina */}
-                          <div className="md:col-span-2">
-                            <h3 className="text-lg font-semibold text-red-800 mb-4 font-['Philosopher'] flex items-center gap-2">
-                              <span className="text-xl">💰</span>
-                              5. Dakshina
-                            </h3>
-                            
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                              <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Dakshina Prices (₹)</label>
-                                <div className="w-full px-4 py-3 bg-red-50 border border-red-200 rounded-lg">
-                                  {formData.dakshina_prices_inr || 'N/A'}
-                                </div>
-                              </div>
-                              
-                              <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Dakshina Prices (USD)</label>
-                                <div className="w-full px-4 py-3 bg-red-50 border border-red-200 rounded-lg">
-                                  {formData.dakshina_prices_usd || 'N/A'}
-                                </div>
-                              </div>
-                              
-                              <div className="flex items-center pt-6">
-                                <div className={`h-5 w-5 rounded-full ${formData.is_dakshina_active ? 'bg-green-500' : 'bg-red-500'}`}></div>
-                                <label className="ml-2 block text-sm text-gray-700">
-                                  {formData.is_dakshina_active ? 'Active' : 'Inactive'}
-                                </label>
-                              </div>
-                            </div>
-                          </div>
-                          
-                          {/* Section 6: Manokamna */}
-                          <div className="md:col-span-2">
-                            <h3 className="text-lg font-semibold text-pink-800 mb-4 font-['Philosopher'] flex items-center gap-2">
-                              <span className="text-xl">📜</span>
-                              6. Manokamna Parchi
-                            </h3>
-                            
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                              <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Manokamna Prices (₹)</label>
-                                <div className="w-full px-4 py-3 bg-pink-50 border border-pink-200 rounded-lg">
-                                  {formData.manokamna_prices_inr || 'N/A'}
-                                </div>
-                              </div>
-                              
-                              <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Manokamna Prices (USD)</label>
-                                <div className="w-full px-4 py-3 bg-pink-50 border border-pink-200 rounded-lg">
-                                  {formData.manokamna_prices_usd || 'N/A'}
-                                </div>
-                              </div>
-                              
-                              <div className="flex items-center pt-6">
-                                <div className={`h-5 w-5 rounded-full ${formData.is_manokamna_active ? 'bg-green-500' : 'bg-red-500'}`}></div>
-                                <label className="ml-2 block text-sm text-gray-700">
-                                  {formData.is_manokamna_active ? 'Active' : 'Inactive'}
-                                </label>
-                              </div>
-                            </div>
-                          </div>
-                          
-                          {/* Section 7: Settings */}
-                          <div className="md:col-span-2">
-                            <h3 className="text-lg font-semibold text-gray-800 mb-4 font-['Philosopher'] flex items-center gap-2">
-                              <span className="text-xl">⚙️</span>
-                              7. Settings
-                            </h3>
-                            
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                              <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
-                                <div className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg">
-                                  {formData.category || 'N/A'}
-                                </div>
-                              </div>
-                              
-                              <div className="flex items-center pt-6">
-                                <div className={`h-5 w-5 rounded-full ${formData.is_active ? 'bg-green-500' : 'bg-red-500'}`}></div>
-                                <label className="ml-2 block text-sm text-gray-700">
-                                  {formData.is_active ? 'Active' : 'Inactive'}
-                                </label>
-                              </div>
-                              
-                              <div className="flex items-center pt-6">
-                                <div className={`h-5 w-5 rounded-full ${formData.is_featured ? 'bg-green-500' : 'bg-red-500'}`}></div>
-                                <label className="ml-2 block text-sm text-gray-700">
-                                  {formData.is_featured ? 'Featured' : 'Not Featured'}
-                                </label>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <div className="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
-                <button
-                  type="button"
-                  className="w-full inline-flex justify-center rounded-lg border border-transparent shadow-sm px-6 py-3 bg-gradient-to-r from-orange-500 to-orange-600 text-base font-medium text-white hover:from-orange-600 hover:to-orange-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500 sm:ml-3 sm:w-auto sm:text-sm transition-all duration-200"
-                  onClick={handleViewModalClose}
-                >
-                  Close
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
+      {/* View Puja Modal */}
+      {viewPujaData && (
+        <ViewPujaModal
+          puja={viewPujaData}
+          visible={isViewModalVisible}
+          onCancel={onViewModalClose}
+        />
       )}
-
-      {/* Pagination */}
-      {/* <div className="flex justify-center items-center gap-2 mt-8">
-        <button className="px-3 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors duration-200 disabled:opacity-50" disabled>
-          ←
-        </button>
-        <button className="px-3 py-2 bg-orange-500 text-white rounded-lg">1</button>
-        <button className="px-3 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors duration-200">2</button>
-        <button className="px-3 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors duration-200">3</button>
-        <button className="px-3 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors duration-200">
-          →
-        </button>
-      </div> */}
     </>
   );
 };

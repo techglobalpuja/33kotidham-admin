@@ -36,6 +36,6 @@ export const API_ENDPOINTS = {
 } as const;
 
 export const STORAGE_KEYS = {
-  AUTH_TOKEN: 'auth_token',
+  token: 'token',
   USER_DATA: 'user_data',
 } as const;

@@ -5,7 +5,7 @@
  */
 export const storeAuthToken = (token: string, tokenType: string = 'Bearer') => {
   if (typeof window !== 'undefined') {
-    localStorage.setItem('auth_token', token);
+    localStorage.setItem('token', token);
     localStorage.setItem('token_type', tokenType);
   }
 };
@@ -16,7 +16,7 @@ export const storeAuthToken = (token: string, tokenType: string = 'Bearer') => {
 export const getAuthToken = (): { token: string | null; tokenType: string | null } => {
   if (typeof window !== 'undefined') {
     return {
-      token: localStorage.getItem('auth_token'),
+      token: localStorage.getItem('token'),
       tokenType: localStorage.getItem('token_type') || 'Bearer'
     };
   }
@@ -28,7 +28,7 @@ export const getAuthToken = (): { token: string | null; tokenType: string | null
  */
 export const clearAuthToken = () => {
   if (typeof window !== 'undefined') {
-    localStorage.removeItem('auth_token');
+    localStorage.removeItem('token');
     localStorage.removeItem('token_type');
   }
 };

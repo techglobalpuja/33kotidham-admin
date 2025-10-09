@@ -126,6 +126,65 @@ export const updatePuja = createAsyncThunk(
   }
 );
 
+// Async thunk for deleting a puja
+export const deletePuja = createAsyncThunk(
+  'puja/deletePuja',
+  async (pujaId: string, { rejectWithValue }) => {
+    try {
+      if (!pujaId || typeof pujaId !== 'string') {
+        throw new Error('Valid puja ID is required');
+      }
+      
+      await axiosInstance.delete(`/api/v1/pujas/${pujaId}`);
+      return pujaId; // Return the deleted puja ID
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || error.message);
+    }
+  }
+);
+
+// Async thunk for uploading puja images
+export const uploadPujaImages = createAsyncThunk(
+  'puja/uploadPujaImages',
+  async (uploadData: { pujaId: string; images: File[] }, { rejectWithValue }) => {
+    try {
+      const { pujaId, images } = uploadData;
+      
+      // Validate images
+      if (!images || images.length === 0) {
+        throw new Error('No images provided for upload');
+      }
+      
+      if (images.length > 6) {
+        throw new Error('Maximum 6 images allowed');
+      }
+      
+      const formData = new FormData();
+      
+      // Append each image with indexed field names for better backend handling
+      images.forEach((image, index) => {
+        if (image instanceof File) {
+          formData.append('files', image); // Changed from 'file' to 'files' for multiple files
+          formData.append(`file_${index}`, image); // Also add indexed names for compatibility
+        }
+      });
+      
+      // Add metadata
+      formData.append('count', images.length.toString());
+      
+      const response = await axiosInstance.post(`api/v1/uploads/puja-images/${pujaId}`, formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+      
+      return response?.data;
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || error.message);
+    }
+  }
+);
+
 const pujaSlice = createSlice({
   name: 'puja',
   initialState,
@@ -191,6 +250,37 @@ const pujaSlice = createSlice({
         state.error = null;
       })
       .addCase(updatePuja.rejected, (state, action) => {
+        state.isLoading = false;
+        state.error = action.payload as string;
+      })
+      // Delete puja cases
+      .addCase(deletePuja.pending, (state) => {
+        state.isLoading = true;
+        state.error = null;
+      })
+      .addCase(deletePuja.fulfilled, (state, action: PayloadAction<string>) => {
+        state.isLoading = false;
+        state.error = null;
+        // Clear selectedPuja if it was the deleted one
+        if (state.selectedPuja && state.selectedPuja.id === action.payload) {
+          state.selectedPuja = null;
+        }
+        // Note: We don't filter the pujas array here since we fetch fresh data from server
+      })
+      .addCase(deletePuja.rejected, (state, action) => {
+        state.isLoading = false;
+        state.error = action.payload as string;
+      })
+      // Upload puja images cases
+      .addCase(uploadPujaImages.pending, (state) => {
+        state.isLoading = true;
+        state.error = null;
+      })
+      .addCase(uploadPujaImages.fulfilled, (state, action) => {
+        state.isLoading = false;
+        state.error = null;
+      })
+      .addCase(uploadPujaImages.rejected, (state, action) => {
         state.isLoading = false;
         state.error = action.payload as string;
       });
