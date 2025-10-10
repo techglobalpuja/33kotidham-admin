@@ -215,19 +215,13 @@ export interface PlanFormData {
 }
 
 export interface Plan {
-  id: string;
+  id: number;
   name: string;
-  price: number;
-  image: string;
-  category: 'Normal' | 'VIP';
-  description: {
-    feature1: string;
-    feature2: string;
-    feature3: string;
-    feature4: string;
-  };
-  isActive: boolean;
-  createdDate: string;
+  description: string;
+  image_url: string;
+  actual_price: string;
+  discounted_price: string;
+  created_at: string;
 }
 
 // User Dashboard Types
