@@ -7,6 +7,11 @@ import UpdatePujaModal from './UpdatePujaModal';
 import ViewPujaModal from './ViewPujaModal';
 import type { AppDispatch } from '@/store';
 
+interface Image {
+  id: number;
+  image_url: string;
+}
+
 interface Puja {
   id: string;
   pujaName: string;
@@ -22,6 +27,7 @@ interface Puja {
   pujaImages: string[];
   createdDate: string;
   selectedPlan: string;
+  images?: Image[]; // Add this property
 }
 
 interface PujaListProps {
@@ -89,6 +95,18 @@ const PujaList: React.FC<PujaListProps> = ({ viewMode = 'grid' }) => {
               if (!Array.isArray(images)) return [];
               return images.filter(img => img && typeof img === 'string').map(img => img.toString().trim()).filter(Boolean);
             })(),
+            images: (() => {
+              // Handle the images array from API response
+              const images = puja?.images;
+              if (!Array.isArray(images)) return [];
+              return images
+                .filter(img => img && typeof img === 'object' && img.image_url)
+                .map(img => ({
+                  id: img.id || 0,
+                  image_url: img.image_url || ''
+                }))
+                .filter(img => img.image_url);
+            })(),
             createdDate: (() => {
               try {
                 const date = puja?.created_date;
@@ -117,6 +135,7 @@ const PujaList: React.FC<PujaListProps> = ({ viewMode = 'grid' }) => {
             isActive: false,
             isFeatured: false,
             pujaImages: [],
+            images: [], // Add this line
             createdDate: new Date().toISOString().split('T')[0],
             selectedPlan: 'Basic Puja Package',
           };
@@ -442,7 +461,31 @@ const PujaList: React.FC<PujaListProps> = ({ viewMode = 'grid' }) => {
               return (
             <div key={puja?.id ?? ''} className="border border-gray-200 rounded-lg p-4 hover:shadow-lg transition-all duration-200 bg-white">
               <div className="aspect-video bg-gradient-to-br from-orange-100 to-orange-200 rounded-lg mb-4 flex items-center justify-center relative overflow-hidden">
-                {puja?.pujaImages && (puja.pujaImages.length ?? 0) > 0 ? (
+                {puja?.images && puja.images.length > 0 ? (
+                  <div className="relative w-full h-full">
+                    {/* Show the first image as preview if available */}
+                    {puja.images[0] && puja.images[0].image_url ? (
+                      <img 
+                        src={`https://api.33kotidham.in/${puja.images[0].image_url}`} 
+                        alt="Puja preview"
+                        className="w-full h-full object-cover rounded-lg"
+                        onError={(e) => {
+                          e.currentTarget.style.display = 'none';
+                          if (e.currentTarget.parentElement) {
+                            e.currentTarget.parentElement.innerHTML = '<div class="w-full h-full bg-orange-100 rounded-lg flex items-center justify-center"><span class="text-orange-600 text-3xl">🛕</span></div>';
+                          }
+                        }}
+                      />
+                    ) : (
+                      <div className="w-full h-full bg-orange-100 rounded-lg flex items-center justify-center">
+                        <span className="text-orange-600 text-3xl">🛕</span>
+                      </div>
+                    )}
+                    <div className="absolute bottom-1 right-1 bg-black bg-opacity-60 text-white text-xs px-1 py-0.5 rounded">
+                      {(puja.images.length ?? 0)} img{(puja.images.length ?? 0) > 1 ? 's' : ''}
+                    </div>
+                  </div>
+                ) : puja?.pujaImages && (puja.pujaImages.length ?? 0) > 0 ? (
                   <div className="relative w-full h-full">
                     <div className="w-full h-full bg-orange-100 rounded-lg flex items-center justify-center">
                       <span className="text-orange-600 text-3xl">🛕</span>

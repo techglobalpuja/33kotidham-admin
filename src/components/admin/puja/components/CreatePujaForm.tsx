@@ -1,9 +1,9 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useDispatch } from 'react-redux';
-import { createPuja, uploadPujaImages } from '@/store/slices/pujaSlice';
+import { createPuja, uploadPujaImages, addPujaBenefit } from '@/store/slices/pujaSlice';
 import { AppDispatch } from '@/store';
 import { Form, Input, Button, Checkbox, Select, Typography } from 'antd';
 import { useDropzone } from 'react-dropzone';
@@ -154,6 +154,39 @@ const CreatePujaForm: React.FC<CreatePujaFormProps> = ({ onSuccess }) => {
     setFormData((prev) => ({ ...prev, benefits: newBenefits }));
   };
 
+  // Function to create object URL for image preview
+  const createImagePreviewUrl = (file: File): string => {
+    return URL.createObjectURL(file);
+  };
+
+  // Function to revoke object URL to prevent memory leaks
+  const revokeImagePreviewUrl = (url: string): void => {
+    URL.revokeObjectURL(url);
+  };
+
+  // Clean up object URLs when component unmounts or when images change
+  useEffect(() => {
+    // Store the current preview URLs so we can clean them up later
+    const previewUrls: string[] = [];
+    
+    return () => {
+      // Clean up any existing object URLs
+      if (formData.pujaImages && Array.isArray(formData.pujaImages)) {
+        formData.pujaImages.forEach(file => {
+          if (file instanceof File) {
+            try {
+              const url = createImagePreviewUrl(file);
+              previewUrls.push(url);
+              revokeImagePreviewUrl(url);
+            } catch (e) {
+              // Ignore errors during cleanup
+            }
+          }
+        });
+      }
+    };
+  }, [formData.pujaImages]);
+
   const handleSubmit = async () => {
     try {
       // Validate required fields
@@ -191,13 +224,14 @@ const CreatePujaForm: React.FC<CreatePujaFormProps> = ({ onSuccess }) => {
         }
       }
 
+      // Step 1: Create the puja with basic details
       const requestData = {
         name: (formData.pujaName ?? '').trim(),
         sub_heading: (formData.subHeading ?? '').trim(),
         description: (formData.about ?? '').trim(),
         date: null,
         time: null,
-        temple_image_url: formData.templeImage?.name ?? '', // Use filename for now
+        temple_image_url: formData.templeImage?.name ?? '',
         temple_address: (formData.templeAddress ?? '').trim(),
         temple_description: (formData.templeDescription ?? '').trim(),
         prasad_price: formData.prasadPrice ?? 0,
@@ -218,7 +252,35 @@ const CreatePujaForm: React.FC<CreatePujaFormProps> = ({ onSuccess }) => {
         const createdPuja = createResult.payload;
         console.log('Puja created successfully:', createdPuja);
         
-        // Upload images if any are selected
+        // Step 2: Add benefits to the created puja
+        const benefitsToAdd = formData.benefits.filter(
+          benefit => benefit.title.trim() !== '' && benefit.description.trim() !== ''
+        );
+        
+        for (const benefit of benefitsToAdd) {
+          try {
+            const benefitData = {
+              benefit_title: benefit.title.trim(),
+              benefit_description: benefit.description.trim()
+            };
+            
+            console.log(`Adding benefit to puja ID ${createdPuja.id}:`, benefitData);
+            const benefitResult = await dispatch(addPujaBenefit({
+              pujaId: createdPuja.id,
+              benefit: benefitData
+            })) as any;
+            
+            if (!addPujaBenefit.fulfilled.match(benefitResult)) {
+              console.error('Failed to add benefit:', benefitResult.payload);
+            } else {
+              console.log('Benefit added successfully:', benefitResult.payload);
+            }
+          } catch (benefitError) {
+            console.error('Error adding benefit:', benefitError);
+          }
+        }
+        
+        // Step 3: Upload images if any are selected
         if (formData.pujaImages && formData.pujaImages.length > 0) {
           console.log(`Uploading ${formData.pujaImages.length} images for puja ID: ${createdPuja.id}`);
           const uploadResult = await dispatch(uploadPujaImages({
@@ -329,29 +391,73 @@ const CreatePujaForm: React.FC<CreatePujaFormProps> = ({ onSuccess }) => {
             <div className="mt-4">
               <h4 className="text-sm font-medium text-gray-700 mb-2">Selected Images:</h4>
               <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                {formData.pujaImages.map((file, index) => (
-                  <div key={index} className="relative bg-white p-3 rounded-lg border border-orange-200">
-                    <div className="flex items-center gap-2">
-                      <svg className="w-4 h-4 text-orange-500" fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clipRule="evenodd" />
-                      </svg>
-                      <span className="text-xs text-gray-600 truncate flex-1">{file.name}</span>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const updatedImages = formData.pujaImages.filter((_, i) => i !== index);
-                          handleInputChange('pujaImages', updatedImages);
-                        }}
-                        className="text-red-500 hover:text-red-700 text-xs"
-                      >
-                        ✕
-                      </button>
+                {formData.pujaImages.map((file, index) => {
+                  // Create preview URL for the image
+                  let previewUrl = '';
+                  try {
+                    previewUrl = createImagePreviewUrl(file);
+                  } catch (e) {
+                    // If we can't create a preview, we'll show the file icon
+                  }
+                  
+                  return (
+                    <div key={index} className="relative bg-white p-3 rounded-lg border border-orange-200">
+                      {previewUrl ? (
+                        <div className="relative w-full h-24 mb-2 rounded overflow-hidden">
+                          <img 
+                            src={previewUrl} 
+                            alt={`Preview ${index + 1}`} 
+                            className="w-full h-full object-cover"
+                            onError={(e) => {
+                              // If image fails to load, revoke the URL and show file icon
+                              revokeImagePreviewUrl(previewUrl);
+                              e.currentTarget.style.display = 'none';
+                              if (e.currentTarget.nextElementSibling) {
+                                (e.currentTarget.nextElementSibling as HTMLElement).style.display = 'flex';
+                              }
+                            }}
+                          />
+                          <div 
+                            className="absolute inset-0 bg-gray-900 bg-opacity-0 hover:bg-opacity-20 transition-all duration-200 flex items-center justify-center opacity-0 hover:opacity-100 cursor-pointer"
+                            onClick={() => {
+                              revokeImagePreviewUrl(previewUrl);
+                              const updatedImages = formData.pujaImages.filter((_, i) => i !== index);
+                              handleInputChange('pujaImages', updatedImages);
+                            }}
+                          >
+                            <span className="text-white text-lg font-bold">✕</span>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="flex items-center justify-center w-full h-24 mb-2 bg-orange-50 rounded">
+                          <svg className="w-8 h-8 text-orange-400" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clipRule="evenodd" />
+                          </svg>
+                        </div>
+                      )}
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-gray-600 truncate flex-1">{file.name}</span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            // Revoke the URL if it exists
+                            if (previewUrl) {
+                              revokeImagePreviewUrl(previewUrl);
+                            }
+                            const updatedImages = formData.pujaImages.filter((_, i) => i !== index);
+                            handleInputChange('pujaImages', updatedImages);
+                          }}
+                          className="text-red-500 hover:text-red-700 text-xs"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                      <div className="text-xs text-gray-400 mt-1">
+                        {(file.size / 1024 / 1024).toFixed(2)} MB
+                      </div>
                     </div>
-                    <div className="text-xs text-gray-400 mt-1">
-                      {(file.size / 1024 / 1024).toFixed(2)} MB
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           )}

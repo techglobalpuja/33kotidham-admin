@@ -10,6 +10,11 @@ interface Benefit {
   description?: string | null;
 }
 
+interface Image {
+  id: number;
+  image_url: string;
+}
+
 interface PujaData {
   id?: string | null;
   name?: string | null;
@@ -30,6 +35,8 @@ interface PujaData {
   category?: string | null;
   is_active?: boolean | null;
   is_featured?: boolean | null;
+  puja_images?: string[] | null;
+  images?: Image[] | null;
 }
 
 interface ViewPujaModalProps {
@@ -78,6 +85,8 @@ const ViewPujaModal: React.FC<ViewPujaModalProps> = ({
     category: (puja.category ?? 'general').toString().trim(),
     is_active: Boolean(puja.is_active ?? true),
     is_featured: Boolean(puja.is_featured ?? false),
+    puja_images: Array.isArray(puja.puja_images) ? puja.puja_images : [],
+    images: Array.isArray(puja.images) ? puja.images : [],
   };
 
   // Format price safely
@@ -145,6 +154,39 @@ const ViewPujaModal: React.FC<ViewPujaModalProps> = ({
                 {safeData.description}
               </div>
             </div>
+            
+            {/* Puja Images Preview */}
+            {safeData.images && safeData.images.length > 0 && (
+              <div className="md:col-span-2">
+                <label className="block text-sm font-medium text-gray-700 mb-1">Puja Images</label>
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 mt-2">
+                  {safeData.images.map((image: Image, index: number) => (
+                    <div key={image.id} className="relative group">
+                      <div className="aspect-square bg-orange-100 rounded-lg flex items-center justify-center overflow-hidden border border-orange-200">
+                        {image.image_url ? (
+                          <img 
+                            src={`https://api.33kotidham.in/${image.image_url}`} 
+                            alt={`Puja image ${index + 1}`}
+                            className="w-full h-full object-cover"
+                            onError={(e) => {
+                              e.currentTarget.style.display = 'none';
+                              if (e.currentTarget.parentElement) {
+                                e.currentTarget.parentElement.innerHTML = '<span class="text-orange-600 text-2xl">🛕</span>';
+                              }
+                            }}
+                          />
+                        ) : (
+                          <span className="text-orange-400 text-xl">?</span>
+                        )}
+                      </div>
+                      <div className="absolute bottom-1 right-1 bg-black bg-opacity-60 text-white text-xs px-1 py-0.5 rounded">
+                        #{index + 1}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </div>
 

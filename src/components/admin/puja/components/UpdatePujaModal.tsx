@@ -335,6 +335,34 @@ const UpdatePujaModal: React.FC<UpdatePujaModalProps> = ({
     }
   };
 
+  // Function to create object URL for image preview
+  const createImagePreviewUrl = (file: File): string => {
+    return URL.createObjectURL(file);
+  };
+
+  // Function to revoke object URL to prevent memory leaks
+  const revokeImagePreviewUrl = (url: string): void => {
+    URL.revokeObjectURL(url);
+  };
+
+  // Clean up object URLs when component unmounts or when images change
+  useEffect(() => {
+    return () => {
+      // Clean up any existing object URLs
+      if (formData.pujaImages && Array.isArray(formData.pujaImages)) {
+        formData.pujaImages.forEach(file => {
+          if (file instanceof File) {
+            try {
+              revokeImagePreviewUrl(URL.createObjectURL(file));
+            } catch (e) {
+              // Ignore errors during cleanup
+            }
+          }
+        });
+      }
+    };
+  }, [formData.pujaImages]);
+
   const handleSubmit = async () => {
     console.log("UpdatePujaModal - handleSubmit called");
     console.log("Images changed:", imagesChanged);
@@ -542,53 +570,137 @@ const UpdatePujaModal: React.FC<UpdatePujaModalProps> = ({
                 <div className="mt-4">
                   <h4 className="text-sm font-medium text-gray-700 mb-2">New Images to Upload:</h4>
                   <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                    {formData.pujaImages.map((file, index) => (
-                      <div key={index} className="relative bg-white p-3 rounded-lg border border-orange-200">
-                        <div className="flex items-center gap-2">
-                          <svg className="w-4 h-4 text-orange-500" fill="currentColor" viewBox="0 0 20 20">
-                            <path fillRule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clipRule="evenodd" />
-                          </svg>
-                          <span className="text-xs text-gray-600 truncate flex-1">{file.name}</span>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              if (formData.pujaImages && Array.isArray(formData.pujaImages)) {
-                                const updatedImages = formData.pujaImages.filter((_, i) => i !== index);
-                                handleInputChange('pujaImages', updatedImages);
-                                if (updatedImages.length === 0) {
-                                  setImagesChanged(false);
+                    {formData.pujaImages.map((file, index) => {
+                      // Create preview URL for the image
+                      let previewUrl = '';
+                      try {
+                        previewUrl = createImagePreviewUrl(file);
+                      } catch (e) {
+                        // If we can't create a preview, we'll show the file icon
+                      }
+                      
+                      return (
+                        <div key={index} className="relative bg-white p-3 rounded-lg border border-orange-200">
+                          {previewUrl ? (
+                            <div className="relative w-full h-24 mb-2 rounded overflow-hidden">
+                              <img 
+                                src={previewUrl} 
+                                alt={`Preview ${index + 1}`} 
+                                className="w-full h-full object-cover"
+                                onError={(e) => {
+                                  // If image fails to load, revoke the URL and show file icon
+                                  revokeImagePreviewUrl(previewUrl);
+                                  e.currentTarget.style.display = 'none';
+                                  if (e.currentTarget.nextElementSibling) {
+                                    (e.currentTarget.nextElementSibling as HTMLElement).style.display = 'flex';
+                                  }
+                                }}
+                              />
+                              <div 
+                                className="absolute inset-0 bg-gray-900 bg-opacity-0 hover:bg-opacity-20 transition-all duration-200 flex items-center justify-center opacity-0 hover:opacity-100 cursor-pointer"
+                                onClick={() => {
+                                  revokeImagePreviewUrl(previewUrl);
+                                  if (formData.pujaImages && Array.isArray(formData.pujaImages)) {
+                                    const updatedImages = formData.pujaImages.filter((_, i) => i !== index);
+                                    handleInputChange('pujaImages', updatedImages);
+                                    if (updatedImages.length === 0) {
+                                      setImagesChanged(false);
+                                    }
+                                  }
+                                }}
+                              >
+                                <span className="text-white text-lg font-bold">✕</span>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="flex items-center justify-center w-full h-24 mb-2 bg-orange-50 rounded">
+                              <svg className="w-8 h-8 text-orange-400" fill="currentColor" viewBox="0 0 20 20">
+                                <path fillRule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clipRule="evenodd" />
+                              </svg>
+                            </div>
+                          )}
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs text-gray-600 truncate flex-1">{file.name}</span>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                // Revoke the URL if it exists
+                                if (previewUrl) {
+                                  revokeImagePreviewUrl(previewUrl);
                                 }
-                              }
-                            }}
-                            className="text-red-500 hover:text-red-700 text-xs"
-                          >
-                            ✕
-                          </button>
+                                if (formData.pujaImages && Array.isArray(formData.pujaImages)) {
+                                  const updatedImages = formData.pujaImages.filter((_, i) => i !== index);
+                                  handleInputChange('pujaImages', updatedImages);
+                                  if (updatedImages.length === 0) {
+                                    setImagesChanged(false);
+                                  }
+                                }
+                              }}
+                              className="text-red-500 hover:text-red-700 text-xs"
+                            >
+                              ✕
+                            </button>
+                          </div>
+                          <div className="text-xs text-gray-400 mt-1">
+                            {(file.size / 1024 / 1024).toFixed(2)} MB
+                          </div>
                         </div>
-                        <div className="text-xs text-gray-400 mt-1">
-                          {(file.size / 1024 / 1024).toFixed(2)} MB
-                        </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
               )}
               
               {/* Show existing images info */}
-              {pujaData && pujaData.puja_images && Array.isArray(pujaData.puja_images) && pujaData.puja_images.length > 0 && (
+              {pujaData && (pujaData.images || pujaData.puja_images) && (
                 <div className="mt-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
                   <h4 className="text-sm font-medium text-blue-700 mb-2">Current Images:</h4>
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                    {pujaData.puja_images.map((imageUrl: string, index: number) => (
-                      <div key={index} className="bg-white p-2 rounded border border-blue-200">
-                        <div className="flex items-center gap-1">
-                          <svg className="w-3 h-3 text-blue-500" fill="currentColor" viewBox="0 0 20 20">
-                            <path fillRule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clipRule="evenodd" />
-                          </svg>
-                          <span className="text-xs text-blue-600">Image {index + 1}</span>
+                    {/* Show images from API response if available */}
+                    {pujaData.images && Array.isArray(pujaData.images) && pujaData.images.length > 0 ? (
+                      pujaData.images.map((image: any, index: number) => (
+                        <div key={image.id || index} className="bg-white p-2 rounded border border-blue-200">
+                          {image.image_url ? (
+                            <div className="relative w-full h-16 rounded overflow-hidden">
+                              <img 
+                                src={`https://api.33kotidham.in/${image.image_url}`} 
+                                alt={`Current image ${index + 1}`}
+                                className="w-full h-full object-cover"
+                                onError={(e) => {
+                                  e.currentTarget.style.display = 'none';
+                                  if (e.currentTarget.parentElement) {
+                                    e.currentTarget.parentElement.innerHTML = '<div class="w-full h-full bg-blue-100 flex items-center justify-center"><svg class="w-4 h-4 text-blue-500" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clipRule="evenodd" /></svg></div>';
+                                  }
+                                }}
+                              />
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-1">
+                              <svg className="w-3 h-3 text-blue-500" fill="currentColor" viewBox="0 0 20 20">
+                                <path fillRule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clipRule="evenodd" />
+                              </svg>
+                              <span className="text-xs text-blue-600">Image {index + 1}</span>
+                            </div>
+                          )}
                         </div>
+                      ))
+                    ) : pujaData.puja_images && Array.isArray(pujaData.puja_images) && pujaData.puja_images.length > 0 ? (
+                      // Fallback to puja_images if images is not available
+                      pujaData.puja_images.map((imageUrl: string, index: number) => (
+                        <div key={index} className="bg-white p-2 rounded border border-blue-200">
+                          <div className="flex items-center gap-1">
+                            <svg className="w-3 h-3 text-blue-500" fill="currentColor" viewBox="0 0 20 20">
+                              <path fillRule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clipRule="evenodd" />
+                            </svg>
+                            <span className="text-xs text-blue-600">Image {index + 1}</span>
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="col-span-full text-center text-xs text-blue-600">
+                        No images available
                       </div>
-                    ))}
+                    )}
                   </div>
                   <p className="text-xs text-blue-600 mt-2">
                     {imagesChanged ? 'These will be replaced with new images when saved' : 'Upload new images to replace these'}

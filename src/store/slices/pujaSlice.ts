@@ -7,6 +7,12 @@ export interface Benefit {
   description: string;
 }
 
+// Add Image interface
+export interface Image {
+  id: number;
+  image_url: string;
+}
+
 export interface Puja {
   id: string;
   name: string;
@@ -33,6 +39,7 @@ export interface Puja {
   selected_plan?: string;
   benefits?: Benefit[];
   selected_plan_ids?: string[];
+  images?: Image[]; // Add this property to match API response
 }
 
 // Define PujaState type
@@ -143,6 +150,19 @@ export const deletePuja = createAsyncThunk(
   }
 );
 
+// Async thunk for adding a benefit to a puja
+export const addPujaBenefit = createAsyncThunk(
+  'puja/addPujaBenefit',
+  async ({ pujaId, benefit }: { pujaId: string; benefit: { benefit_title: string; benefit_description: string } }, { rejectWithValue }) => {
+    try {
+      const response = await axiosInstance.post(`/api/v1/pujas/${pujaId}/benefits`, benefit);
+      return response?.data;
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || error.message);
+    }
+  }
+);
+
 // Async thunk for uploading puja images
 export const uploadPujaImages = createAsyncThunk(
   'puja/uploadPujaImages',
@@ -159,26 +179,30 @@ export const uploadPujaImages = createAsyncThunk(
         throw new Error('Maximum 6 images allowed');
       }
       
-      const formData = new FormData();
+      // Store results of all uploads
+      const uploadResults = [];
       
-      // Append each image with indexed field names for better backend handling
-      images.forEach((image, index) => {
+      // Upload each image separately (as per the cURL example)
+      for (const image of images) {
         if (image instanceof File) {
-          formData.append('files', image); // Changed from 'file' to 'files' for multiple files
-          formData.append(`file_${index}`, image); // Also add indexed names for compatibility
+          const formData = new FormData();
+          formData.append('file', image);
+          
+          try {
+            const response = await axiosInstance.post(`api/v1/uploads/puja-images/${pujaId}`, formData, {
+              headers: {
+                'Content-Type': 'multipart/form-data',
+              },
+            });
+            uploadResults.push(response.data);
+          } catch (error) {
+            console.error(`Failed to upload image ${image.name}:`, error);
+            // Continue with other images even if one fails
+          }
         }
-      });
+      }
       
-      // Add metadata
-      formData.append('count', images.length.toString());
-      
-      const response = await axiosInstance.post(`api/v1/uploads/puja-images/${pujaId}`, formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      });
-      
-      return response?.data;
+      return uploadResults;
     } catch (error: any) {
       return rejectWithValue(error.response?.data?.message || error.message);
     }
@@ -281,6 +305,26 @@ const pujaSlice = createSlice({
         state.error = null;
       })
       .addCase(uploadPujaImages.rejected, (state, action) => {
+        state.isLoading = false;
+        state.error = action.payload as string;
+      })
+      // Add puja benefit cases
+      .addCase(addPujaBenefit.pending, (state) => {
+        state.isLoading = true;
+        state.error = null;
+      })
+      .addCase(addPujaBenefit.fulfilled, (state, action) => {
+        state.isLoading = false;
+        state.error = null;
+        // Optionally update the selectedPuja with the new benefit
+        if (state.selectedPuja && state.selectedPuja.benefits) {
+          state.selectedPuja.benefits.push({
+            title: action.payload.benefit_title,
+            description: action.payload.benefit_description
+          });
+        }
+      })
+      .addCase(addPujaBenefit.rejected, (state, action) => {
         state.isLoading = false;
         state.error = action.payload as string;
       });
