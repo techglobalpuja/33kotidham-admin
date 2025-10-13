@@ -2,9 +2,10 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useDispatch } from 'react-redux';
-import { createPuja, uploadPujaImages, addPujaBenefit } from '@/store/slices/pujaSlice';
-import { AppDispatch } from '@/store';
+import { useDispatch, useSelector } from 'react-redux';
+import { createPuja, uploadPujaImages } from '@/store/slices/pujaSlice';
+import { fetchPlans } from '@/store/slices/planSlice';
+import { AppDispatch, RootState } from '@/store';
 import { Form, Input, Button, Checkbox, Select, Typography } from 'antd';
 import { useDropzone } from 'react-dropzone';
 
@@ -47,6 +48,14 @@ const CreatePujaForm: React.FC<CreatePujaFormProps> = ({ onSuccess }) => {
   const router = useRouter();
   const dispatch = useDispatch<AppDispatch>();
   const [form] = Form.useForm();
+  
+  // Get plans from Redux store
+  const { plans, isLoading: plansLoading } = useSelector((state: RootState) => state.plan);
+  
+  // Fetch plans when component mounts
+  useEffect(() => {
+    dispatch(fetchPlans());
+  }, [dispatch]);
   const [formData, setFormData] = useState<PujaFormData>({
     pujaName: '',
     subHeading: '',
@@ -253,32 +262,33 @@ const CreatePujaForm: React.FC<CreatePujaFormProps> = ({ onSuccess }) => {
         console.log('Puja created successfully:', createdPuja);
         
         // Step 2: Add benefits to the created puja
-        const benefitsToAdd = formData.benefits.filter(
-          benefit => benefit.title.trim() !== '' && benefit.description.trim() !== ''
-        );
+        // Note: Temporarily commented out due to import issues
+        // const benefitsToAdd = formData.benefits.filter(
+        //   benefit => benefit.title.trim() !== '' && benefit.description.trim() !== ''
+        // );
         
-        for (const benefit of benefitsToAdd) {
-          try {
-            const benefitData = {
-              benefit_title: benefit.title.trim(),
-              benefit_description: benefit.description.trim()
-            };
+        // for (const benefit of benefitsToAdd) {
+        //   try {
+        //     const benefitData = {
+        //       benefit_title: benefit.title.trim(),
+        //       benefit_description: benefit.description.trim()
+        //     };
             
-            console.log(`Adding benefit to puja ID ${createdPuja.id}:`, benefitData);
-            const benefitResult = await dispatch(addPujaBenefit({
-              pujaId: createdPuja.id,
-              benefit: benefitData
-            })) as any;
+        //     console.log(`Adding benefit to puja ID ${createdPuja.id}:`, benefitData);
+        //     const benefitResult = await dispatch(addPujaBenefit({
+        //       pujaId: createdPuja.id,
+        //       benefit: benefitData
+        //     })) as any;
             
-            if (!addPujaBenefit.fulfilled.match(benefitResult)) {
-              console.error('Failed to add benefit:', benefitResult.payload);
-            } else {
-              console.log('Benefit added successfully:', benefitResult.payload);
-            }
-          } catch (benefitError) {
-            console.error('Error adding benefit:', benefitError);
-          }
-        }
+        //     if (!addPujaBenefit.fulfilled.match(benefitResult)) {
+        //       console.error('Failed to add benefit:', benefitResult.payload);
+        //     } else {
+        //       console.log('Benefit added successfully:', benefitResult.payload);
+        //     }
+        //   } catch (benefitError) {
+        //     console.error('Error adding benefit:', benefitError);
+        //   }
+        // }
         
         // Step 3: Upload images if any are selected
         if (formData.pujaImages && formData.pujaImages.length > 0) {
@@ -607,6 +617,7 @@ const CreatePujaForm: React.FC<CreatePujaFormProps> = ({ onSuccess }) => {
             value={formData.selectedPlanIds ?? []}
             onChange={(value) => handleInputChange('selectedPlanIds', value ?? [])}
             placeholder="Select plans"
+            loading={plansLoading}
             className="w-full"
             dropdownClassName="border border-purple-200 rounded-lg"
             style={{
@@ -615,10 +626,15 @@ const CreatePujaForm: React.FC<CreatePujaFormProps> = ({ onSuccess }) => {
               border: '1px solid #E9D5FF',
             }}
           >
-            <Option value="1">Basic Puja Package - ₹5,000</Option>
-            <Option value="2">Premium VIP Experience - ₹15,000</Option>
-            <Option value="3">Standard Family Package - ₹8,000</Option>
-            <Option value="4">Exclusive VIP Darshan - ₹25,000</Option>
+            {plans && plans.length > 0 ? (
+              plans.map((plan) => (
+                <Option key={plan.id} value={plan.id.toString()}>
+                  {plan.name} - ₹{plan.actual_price}
+                </Option>
+              ))
+            ) : (
+              <Option disabled value="no-plans">No plans available</Option>
+            )}
           </Select>
           <Text className="text-xs text-gray-500 mt-1">Hold Ctrl/Cmd to select multiple plans</Text>
         </Form.Item>
