@@ -2,15 +2,11 @@
 
 import React, { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { Modal, Form, Input, Button, Checkbox, Select, Typography, Row, Col, Spin } from 'antd';
+import { Modal, Form, Input, Button, Checkbox, Select, Typography, Row, Col } from 'antd';
 import { useDropzone } from 'react-dropzone';
 import { RootState } from '@/store';
 import { fetchPujaById, updatePuja, uploadPujaImages } from '@/store/slices/pujaSlice';
-<<<<<<< HEAD
-import { fetchPlans } from '@/store/slices/planSlice'; // Import fetchPlans
-=======
 import { fetchPlans } from '@/store/slices/planSlice';
->>>>>>> ab37aa9c58b9afea97891a1e9a25388c26d25a88
 import { AppDispatch } from '@/store';
 
 const { Text } = Typography;
@@ -30,7 +26,7 @@ interface PujaFormData {
   templeAddress?: string | null;
   templeDescription?: string | null;
   benefits?: Benefit[] | null;
-  selectedPlanIds?: number[] | null;
+  selectedPlanIds?: string[] | null;
   prasadPrice?: number | null;
   prasadStatus?: boolean | null;
   dakshinaPrices?: string | null;
@@ -68,15 +64,10 @@ const UpdatePujaModal: React.FC<UpdatePujaModalProps> = ({
   const safeOnSuccess = onSuccess ?? (() => {});
   
   const dispatch = useDispatch<AppDispatch>();
-<<<<<<< HEAD
-  // Access plans from Redux store
-  const { plans, isLoading: plansLoading } = useSelector((state: RootState) => state.plan);
-=======
   
   // Get plans from Redux store
   const { plans, isLoading: plansLoading } = useSelector((state: RootState) => state.plan);
   
->>>>>>> ab37aa9c58b9afea97891a1e9a25388c26d25a88
   // Track if images have been changed
   const [imagesChanged, setImagesChanged] = useState(false);
   const [form] = Form.useForm();
@@ -108,11 +99,6 @@ const UpdatePujaModal: React.FC<UpdatePujaModalProps> = ({
     isFeatured: false,
   });
 
-  // Fetch plans when component mounts
-  useEffect(() => {
-    dispatch(fetchPlans());
-  }, [dispatch]);
-
   // Effect to populate form when pujaData is received
   useEffect(() => {
     // Fetch plans when modal is visible
@@ -141,7 +127,7 @@ const UpdatePujaModal: React.FC<UpdatePujaModalProps> = ({
             ];
 
         const safeSelectedPlanIds = Array.isArray(pujaData.selected_plan_ids) 
-          ? pujaData.selected_plan_ids.filter((id: any) => id != null).map((id: any) => Number(id))
+          ? pujaData.selected_plan_ids.filter((id: any) => id != null).map((id: any) => id.toString())
           : [];
 
         const newFormData = {
@@ -301,7 +287,7 @@ const UpdatePujaModal: React.FC<UpdatePujaModalProps> = ({
             safeValue = Array.isArray(value) ? value : [];
             break;
           case 'selectedPlanIds':
-            safeValue = Array.isArray(value) ? value.filter(v => v != null).map(v => Number(v)) : [];
+            safeValue = Array.isArray(value) ? value.filter(v => v != null).map(v => v.toString()) : [];
             break;
           case 'prasadPrice':
             const numValue = Number(value);
@@ -439,8 +425,8 @@ const UpdatePujaModal: React.FC<UpdatePujaModalProps> = ({
             }))
           : [],
         selected_plan_ids: Array.isArray(formData.selectedPlanIds) 
-          ? formData.selectedPlanIds.filter(id => id != null)
-          : []
+          ? formData.selectedPlanIds.filter(id => id != null).map(id => id.toString())
+          : [],
       } as any;
       
       console.log("Calling updatePuja with:", requestData);
@@ -894,24 +880,7 @@ const UpdatePujaModal: React.FC<UpdatePujaModalProps> = ({
                   borderRadius: '0.5rem',
                   border: '1px solid #E9D5FF',
                 }}
-                loading={plansLoading}
               >
-<<<<<<< HEAD
-                {plansLoading ? (
-                  <Option value="loading" disabled>
-                    <Spin size="small" /> Loading plans...
-                  </Option>
-                ) : plans && plans.length > 0 ? (
-                  plans.map((plan) => (
-                    <Option key={plan.id} value={plan.id.toString()}>
-                      {plan.name} - ₹{parseFloat(plan.actual_price).toFixed(2)}
-                    </Option>
-                  ))
-                ) : (
-                  <Option value="no-plans" disabled>
-                    No plans available
-                  </Option>
-=======
                 {plans && plans.length > 0 ? (
                   plans.map((plan) => (
                     <Option key={plan.id} value={plan.id.toString()}>
@@ -920,7 +889,6 @@ const UpdatePujaModal: React.FC<UpdatePujaModalProps> = ({
                   ))
                 ) : (
                   <Option disabled value="no-plans">No plans available</Option>
->>>>>>> ab37aa9c58b9afea97891a1e9a25388c26d25a88
                 )}
               </Select>
               <Text className="text-xs text-gray-500 mt-1">Hold Ctrl/Cmd to select multiple plans</Text>
