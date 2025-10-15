@@ -157,6 +157,16 @@ export interface ChawadaFormData {
   isActive: boolean;
 }
 
+// Chadawa types for API
+export interface Chadawa {
+  id: number;
+  name: string;
+  description: string;
+  image_url: string;
+  price: number;
+  requires_note: boolean;
+}
+
 export interface ProductFormData {
   name: string;
   price: number;

@@ -3,12 +3,14 @@ import { configureStore } from '@reduxjs/toolkit';
 import authReducer from '@/store/slices/authSlice';
 import pujaReducer from '@/store/slices/pujaSlice';
 import planReducer from '@/store/slices/planSlice';
+import chadawaReducer from '@/store/slices/chadawaSlice';
 
 const store = configureStore({
   reducer: {
     auth: authReducer,
     puja: pujaReducer,
     plan: planReducer,
+    chadawa: chadawaReducer,
   },
 });
 
