@@ -6,7 +6,11 @@ import { Modal, Form, Input, Button, Checkbox, Select, Typography, Row, Col, Spi
 import { useDropzone } from 'react-dropzone';
 import { RootState } from '@/store';
 import { fetchPujaById, updatePuja, uploadPujaImages } from '@/store/slices/pujaSlice';
+<<<<<<< HEAD
 import { fetchPlans } from '@/store/slices/planSlice'; // Import fetchPlans
+=======
+import { fetchPlans } from '@/store/slices/planSlice';
+>>>>>>> ab37aa9c58b9afea97891a1e9a25388c26d25a88
 import { AppDispatch } from '@/store';
 
 const { Text } = Typography;
@@ -64,8 +68,15 @@ const UpdatePujaModal: React.FC<UpdatePujaModalProps> = ({
   const safeOnSuccess = onSuccess ?? (() => {});
   
   const dispatch = useDispatch<AppDispatch>();
+<<<<<<< HEAD
   // Access plans from Redux store
   const { plans, isLoading: plansLoading } = useSelector((state: RootState) => state.plan);
+=======
+  
+  // Get plans from Redux store
+  const { plans, isLoading: plansLoading } = useSelector((state: RootState) => state.plan);
+  
+>>>>>>> ab37aa9c58b9afea97891a1e9a25388c26d25a88
   // Track if images have been changed
   const [imagesChanged, setImagesChanged] = useState(false);
   const [form] = Form.useForm();
@@ -101,6 +112,14 @@ const UpdatePujaModal: React.FC<UpdatePujaModalProps> = ({
   useEffect(() => {
     dispatch(fetchPlans());
   }, [dispatch]);
+
+  // Effect to populate form when pujaData is received
+  useEffect(() => {
+    // Fetch plans when modal is visible
+    if (isVisible) {
+      dispatch(fetchPlans());
+    }
+  }, [dispatch, isVisible]);
 
   // Effect to populate form when pujaData is received
   useEffect(() => {
@@ -165,6 +184,7 @@ const UpdatePujaModal: React.FC<UpdatePujaModalProps> = ({
           about: newFormData.about,
           templeAddress: newFormData.templeAddress,
           templeDescription: newFormData.templeDescription,
+          selectedPlanIds: newFormData.selectedPlanIds, // Add this missing field
           prasadPrice: newFormData.prasadPrice,
           prasadStatus: newFormData.prasadStatus,
           dakshinaPrices: newFormData.dakshinaPrices,
@@ -866,6 +886,7 @@ const UpdatePujaModal: React.FC<UpdatePujaModalProps> = ({
                 value={formData.selectedPlanIds ?? []}
                 onChange={(value) => handleInputChange('selectedPlanIds', value ?? [])}
                 placeholder="Select plans"
+                loading={plansLoading}
                 className="w-full"
                 dropdownClassName="border border-purple-200 rounded-lg"
                 style={{
@@ -875,6 +896,7 @@ const UpdatePujaModal: React.FC<UpdatePujaModalProps> = ({
                 }}
                 loading={plansLoading}
               >
+<<<<<<< HEAD
                 {plansLoading ? (
                   <Option value="loading" disabled>
                     <Spin size="small" /> Loading plans...
@@ -889,6 +911,16 @@ const UpdatePujaModal: React.FC<UpdatePujaModalProps> = ({
                   <Option value="no-plans" disabled>
                     No plans available
                   </Option>
+=======
+                {plans && plans.length > 0 ? (
+                  plans.map((plan) => (
+                    <Option key={plan.id} value={plan.id.toString()}>
+                      {plan.name} - ₹{plan.actual_price}
+                    </Option>
+                  ))
+                ) : (
+                  <Option disabled value="no-plans">No plans available</Option>
+>>>>>>> ab37aa9c58b9afea97891a1e9a25388c26d25a88
                 )}
               </Select>
               <Text className="text-xs text-gray-500 mt-1">Hold Ctrl/Cmd to select multiple plans</Text>

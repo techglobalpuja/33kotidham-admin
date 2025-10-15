@@ -264,32 +264,33 @@ const CreatePujaForm: React.FC<CreatePujaFormProps> = ({ onSuccess }) => {
         console.log('Puja created successfully:', createdPuja);
         
         // Step 2: Add benefits to the created puja
-        const benefitsToAdd = formData.benefits.filter(
-          benefit => benefit.title.trim() !== '' && benefit.description.trim() !== ''
-        );
+        // Note: Temporarily commented out due to import issues
+        // const benefitsToAdd = formData.benefits.filter(
+        //   benefit => benefit.title.trim() !== '' && benefit.description.trim() !== ''
+        // );
         
-        for (const benefit of benefitsToAdd) {
-          try {
-            const benefitData = {
-              benefit_title: benefit.title.trim(),
-              benefit_description: benefit.description.trim()
-            };
+        // for (const benefit of benefitsToAdd) {
+        //   try {
+        //     const benefitData = {
+        //       benefit_title: benefit.title.trim(),
+        //       benefit_description: benefit.description.trim()
+        //     };
             
-            console.log(`Adding benefit to puja ID ${createdPuja.id}:`, benefitData);
-            const benefitResult = await dispatch(addPujaBenefit({
-              pujaId: createdPuja.id,
-              benefit: benefitData
-            })) as any;
+        //     console.log(`Adding benefit to puja ID ${createdPuja.id}:`, benefitData);
+        //     const benefitResult = await dispatch(addPujaBenefit({
+        //       pujaId: createdPuja.id,
+        //       benefit: benefitData
+        //     })) as any;
             
-            if (!addPujaBenefit.fulfilled.match(benefitResult)) {
-              console.error('Failed to add benefit:', benefitResult.payload);
-            } else {
-              console.log('Benefit added successfully:', benefitResult.payload);
-            }
-          } catch (benefitError) {
-            console.error('Error adding benefit:', benefitError);
-          }
-        }
+        //     if (!addPujaBenefit.fulfilled.match(benefitResult)) {
+        //       console.error('Failed to add benefit:', benefitResult.payload);
+        //     } else {
+        //       console.log('Benefit added successfully:', benefitResult.payload);
+        //     }
+        //   } catch (benefitError) {
+        //     console.error('Error adding benefit:', benefitError);
+        //   }
+        // }
         
         // Step 3: Upload images if any are selected
         if (formData.pujaImages && formData.pujaImages.length > 0) {
@@ -618,6 +619,7 @@ const CreatePujaForm: React.FC<CreatePujaFormProps> = ({ onSuccess }) => {
             value={formData.selectedPlanIds ?? []}
             onChange={(value) => handleInputChange('selectedPlanIds', value ?? [])}
             placeholder="Select plans"
+            loading={plansLoading}
             className="w-full"
             dropdownClassName="border border-purple-200 rounded-lg"
             style={{
