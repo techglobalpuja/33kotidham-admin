@@ -1,345 +1,171 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { Form, Input, Button, Select, Checkbox, Typography, DatePicker, Upload, message, Modal, Spin } from 'antd';
-import { UploadOutlined, PlusOutlined } from '@ant-design/icons';
-import { useSelector } from 'react-redux';
+import React, { useState } from 'react';
+import { useDispatch } from 'react-redux';
+import { createBlog, uploadBlogThumbnail } from '@/store/slices/blogSlice';
+import { AppDispatch } from '@/store';
+import { Form, Input, Button, Checkbox, Typography, DatePicker } from 'antd';
+import { useDropzone } from 'react-dropzone';
 import dynamic from 'next/dynamic';
+import dayjs from 'dayjs';
 
-// Dynamically import the rich text editor to avoid SSR issues
+// Dynamically import ReactQuill to avoid SSR issues
 const ReactQuill = dynamic(() => import('react-quill'), { ssr: false });
 import 'react-quill/dist/quill.snow.css';
-// Import auth utilities
-import { getAuthHeader } from '@/utils/auth';
 
-const { TextArea } = Input;
-const { Title } = Typography;
-const { Option } = Select;
+const { Text } = Typography;
 
-const CreateBlogForm: React.FC = () => {
+interface BlogFormData {
+  title: string;
+  subtitle: string;
+  content: string;
+  thumbnail: File | null;
+  metaDescription: string;
+  tags: string;
+  categoryId: number | null;
+  isFeatured: boolean;
+  isActive: boolean;
+  publishTime: string | null;
+  slug: string;
+}
+
+interface CreateBlogFormProps {
+  onSuccess?: () => void;
+}
+
+const CreateBlogForm: React.FC<CreateBlogFormProps> = ({ onSuccess }) => {
+  const dispatch = useDispatch<AppDispatch>();
   const [form] = Form.useForm();
-  const [content, setContent] = useState('');
-  const [thumbnailFile, setThumbnailFile] = useState<File | null>(null);
-  const [thumbnailUrl, setThumbnailUrl] = useState<string | null>(null);
-  const [publishTime, setPublishTime] = useState<string | null>(null);
-  const [categories, setCategories] = useState<Array<{id: number, name: string, description: string}>>([]);
-  const [isCategoryModalVisible, setIsCategoryModalVisible] = useState(false);
-  const [newCategory, setNewCategory] = useState({ name: '', description: '' });
-  const [loading, setLoading] = useState(false);
-  const [categoriesLoading, setCategoriesLoading] = useState(false);
   
-  // Get user from Redux store
-  const { user } = useSelector((state: any) => state.auth);
+  const [formData, setFormData] = useState<BlogFormData>({
+    title: '',
+    subtitle: '',
+    content: '',
+    thumbnail: null,
+    metaDescription: '',
+    tags: '',
+    categoryId: null,
+    isFeatured: false,
+    isActive: true,
+    publishTime: null,
+    slug: '',
+  });
 
-  // Fetch categories from API
-  const fetchCategories = async () => {
-    setCategoriesLoading(true);
-    try {
-      const authHeader = getAuthHeader();
-      if (!authHeader) {
-        message.error('Authentication required. Please log in.');
-        setCategoriesLoading(false);
-        return;
-      }
-      
-      const response = await fetch('https://api.33kotidham.com/api/v1/blogs/categories/', {
-        method: 'GET',
-        headers: {
-          'accept': 'application/json',
-          'Authorization': authHeader
-        }
-      });
-      
-      if (response.ok) {
-        const data = await response.json();
-        console.log('Categories fetched:', data);
-        // Assuming the API returns an array of categories
-        const categoriesData = Array.isArray(data) ? data : [];
-        console.log('Processed categories:', categoriesData);
-        // Log each category's ID and type for debugging
-        categoriesData.forEach(category => {
-          console.log(`Category ID: ${category.id}, Type: ${typeof category.id}, Name: ${category.name}`);
+  // Dropzone for Thumbnail
+  const { getRootProps, getInputProps } = useDropzone({
+    accept: { 'image/*': [] },
+    multiple: false,
+    maxSize: 10 * 1024 * 1024, // 10MB
+    onDrop: (acceptedFiles, rejectedFiles) => {
+      // Handle rejected files
+      if (rejectedFiles.length > 0) {
+        rejectedFiles.forEach(({ file, errors }) => {
+          errors.forEach(error => {
+            if (error.code === 'file-too-large') {
+              console.error(`File ${file.name} is too large. Maximum size is 10MB.`);
+            } else if (error.code === 'file-invalid-type') {
+              console.error(`File ${file.name} has invalid type. Only images are allowed.`);
+            }
+          });
         });
-        setCategories(categoriesData);
-      } else if (response.status === 401) {
-        message.error('Authentication failed. Please log in again.');
-      } else {
-        console.error('Failed to fetch categories');
-        message.error('Failed to load categories');
       }
-    } catch (error) {
-      console.error('Error fetching categories:', error);
-      message.error('Error loading categories');
-    } finally {
-      setCategoriesLoading(false);
-    }
+      
+      // Handle accepted files
+      if (acceptedFiles.length > 0 && acceptedFiles[0]) {
+        handleInputChange('thumbnail', acceptedFiles[0]);
+      }
+    },
+  });
+
+  const handleInputChange = (field: keyof BlogFormData, value: any) => {
+    setFormData((prev) => ({
+      ...prev,
+      [field]: value ?? '',
+    }));
   };
 
-  // Fetch categories on component mount
-  useEffect(() => {
-    fetchCategories();
-  }, []);
-
-  const handleContentChange = (value: string) => {
-    setContent(value);
+  // Function to create object URL for image preview
+  const createImagePreviewUrl = (file: File): string => {
+    return URL.createObjectURL(file);
   };
 
-  const handleThumbnailUpload = (file: File) => {
-    // Validate file type and size
-    const isImage = file.type.startsWith('image/');
-    const isLt10M = file.size / 1024 / 1024 < 10;
-
-    if (!isImage) {
-      message.error('You can only upload image files!');
-      return false;
-    }
-
-    if (!isLt10M) {
-      message.error('Image must be smaller than 10MB!');
-      return false;
-    }
-
-    setThumbnailFile(file);
-    return false; // Prevent automatic upload
+  // Function to revoke object URL to prevent memory leaks
+  const revokeImagePreviewUrl = (url: string): void => {
+    URL.revokeObjectURL(url);
   };
 
-  // Upload thumbnail to API
-  const uploadThumbnail = async (file: File) => {
+  const handleSubmit = async () => {
     try {
-      const authHeader = getAuthHeader();
-      if (!authHeader) {
-        message.error('Authentication required. Please log in.');
-        return null;
-      }
-      
-      const formData = new FormData();
-      formData.append('file', file);
-      
-      console.log('Uploading thumbnail with auth header:', authHeader);
-
-      const response = await fetch('https://api.33kotidham.com/api/v1/uploads/blog-thumbnails', {
-        method: 'POST',
-        headers: {
-          'accept': 'application/json',
-          'Authorization': authHeader
-        },
-        body: formData
-      });
-      
-      console.log('Thumbnail upload response status:', response.status);
-
-      if (response.ok) {
-        const data = await response.json();
-        console.log('Thumbnail upload successful:', data);
-        return data.file_url; // Return the URL of the uploaded file
-      } else if (response.status === 401) {
-        message.error('Authentication failed. Please log in again.');
-        return null;
-      } else {
-        const errorData = await response.json();
-        console.log('Thumbnail upload error:', errorData);
-        throw new Error(errorData.detail || 'Failed to upload thumbnail');
-      }
-    } catch (error: any) {
-      console.error('Error uploading thumbnail:', error);
-      message.error('Failed to upload thumbnail: ' + (error.message || 'Unknown error'));
-      return null;
-    }
-  };
-
-  const showCategoryModal = () => {
-    setIsCategoryModalVisible(true);
-  };
-
-  const handleCategoryModalOk = async () => {
-    if (!newCategory.name.trim()) {
-      message.error('Category name is required');
-      return;
-    }
-
-    try {
-      setLoading(true);
-      const authHeader = getAuthHeader();
-      if (!authHeader) {
-        message.error('Authentication required. Please log in.');
-        setLoading(false);
+      // Validate required fields
+      if (!formData.title?.trim()) {
+        console.error('Blog title is required');
         return;
       }
       
-      const response = await fetch('https://api.33kotidham.com/api/v1/blogs/categories/', {
-        method: 'POST',
-        headers: {
-          'accept': 'application/json',
-          'Authorization': authHeader,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          name: newCategory.name,
-          description: newCategory.description || '',
-          is_active: true
-        })
-      });
-
-      if (response.ok) {
-        const createdCategory = await response.json();
-        console.log('Created category:', createdCategory);
-        setCategories([...categories, createdCategory]);
-        message.success('Category created successfully!');
-        setNewCategory({ name: '', description: '' });
-        setIsCategoryModalVisible(false);
-        // Don't fetch categories again, just add the new one to the existing list
-      } else if (response.status === 401) {
-        message.error('Authentication failed. Please log in again.');
-      } else {
-        const errorData = await response.json();
-        message.error(errorData.detail || 'Failed to create category');
-      }
-    } catch (error) {
-      console.error('Error creating category:', error);
-      message.error('Failed to create category');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleCategoryModalCancel = () => {
-    setIsCategoryModalVisible(false);
-    setNewCategory({ name: '', description: '' });
-  };
-
-  const handleSubmit = async (values: any) => {
-    console.log('=== FORM SUBMISSION DEBUG INFO ===');
-    console.log('Form values received:', values);
-    console.log('Selected category ID (from values):', values.categoryId);
-    console.log('Category ID type (from values):', typeof values.categoryId);
-    console.log('All form values:', JSON.stringify(values, null, 2));
-    
-    // Let's also check the form fields directly
-    const categoryIdFromForm = form.getFieldValue('categoryId');
-    console.log('Category ID from form.getFieldValue:', categoryIdFromForm);
-    console.log('Category ID type from form.getFieldValue:', typeof categoryIdFromForm);
-    
-    // Check all field values
-    const allFields = form.getFieldsValue();
-    console.log('All form fields:', allFields);
-    
-    form.validateFields().then((validatedValues) => {
-      console.log('Form validateFields result:', validatedValues);
-      console.log('Category from validateFields:', validatedValues.categoryId);
-    }).catch((error) => {
-      console.log('Form validation error:', error);
-    });
-    
-    console.log('Content state:', content);
-    console.log('Publish time state:', publishTime);
-    console.log('Thumbnail file:', thumbnailFile);
-    console.log('Available categories:', categories);
-    console.log('=== END DEBUG INFO ===');
-    
-    try {
-      setLoading(true);
-      
-      const authHeader = getAuthHeader();
-      console.log('Auth header:', authHeader);
-      if (!authHeader) {
-        message.error('Authentication required. Please log in.');
-        setLoading(false);
+      if (!formData.content?.trim()) {
+        console.error('Blog content is required');
         return;
       }
+
+      let thumbnailUrl = '';
       
-      // Upload thumbnail if a file is selected
-      let uploadedThumbnailUrl = null;
-      if (thumbnailFile) {
-        console.log('Uploading thumbnail file:', thumbnailFile);
-        uploadedThumbnailUrl = await uploadThumbnail(thumbnailFile);
-        console.log('Uploaded thumbnail URL:', uploadedThumbnailUrl);
-        if (!uploadedThumbnailUrl) {
-          message.error('Failed to upload thumbnail. Please try again.');
-          setLoading(false);
+      // Upload thumbnail if selected
+      if (formData.thumbnail) {
+        console.log('Uploading blog thumbnail...');
+        const uploadResult = await dispatch(uploadBlogThumbnail(formData.thumbnail));
+        
+        if (uploadBlogThumbnail.fulfilled.match(uploadResult)) {
+          thumbnailUrl = uploadResult.payload;
+          console.log('Thumbnail uploaded successfully:', thumbnailUrl);
+        } else {
+          console.error('Thumbnail upload failed:', uploadResult.payload);
           return;
         }
       }
+
+      // Create the blog
+      const requestData = {
+        title: formData.title.trim(),
+        subtitle: formData.subtitle?.trim() || '',
+        content: formData.content.trim(),
+        thumbnail_image: thumbnailUrl,
+        meta_description: formData.metaDescription?.trim() || '',
+        tags: formData.tags?.trim() || '',
+        category_id: formData.categoryId || 0,
+        is_featured: formData.isFeatured ?? false,
+        is_active: formData.isActive ?? true,
+        publish_time: formData.publishTime || new Date().toISOString(),
+        slug: formData.slug?.trim() || '',
+      } as any;
       
-      // Get category ID from form field directly to ensure we have the correct value
-      // Convert string back to number since we send it as string in the Select component
-      let categoryIdToUse = null;
+      console.log('Creating blog with data:', requestData);
+      const createResult = await dispatch(createBlog(requestData));
       
-      // Priority order for getting category ID:
-      // 1. From form.getFieldValue (most reliable)
-      // 2. From values parameter
-      // 3. null if none found
-      const categoryIdSource = categoryIdFromForm || values.categoryId;
-      
-      if (categoryIdSource) {
-        // Convert to number, handling both string and number inputs
-        categoryIdToUse = typeof categoryIdSource === 'string' ? parseInt(categoryIdSource, 10) : categoryIdSource;
-        console.log('Using category ID:', categoryIdToUse, 'from source:', typeof categoryIdSource);
+      if (createBlog.fulfilled.match(createResult)) {
+        console.log('Blog created successfully:', createResult.payload);
         
-        // Validate that we have a valid number
-        if (isNaN(categoryIdToUse)) {
-          console.log('Category ID is NaN after parsing:', categoryIdSource);
-          categoryIdToUse = null;
-        }
-      } else {
-        console.log('No category ID found in form data');
-      }
-      
-      console.log('Final category ID to use:', categoryIdToUse);
-      console.log('Final category ID type:', typeof categoryIdToUse);
-      
-      // Prepare the data according to API requirements
-      const blogData = {
-        title: values.title,
-        subtitle: values.subtitle || null,
-        content: content,
-        thumbnail_image: uploadedThumbnailUrl || null,
-        meta_description: values.metaDescription || null,
-        tags: values.tags || null,
-        category_id: categoryIdToUse,
-        is_featured: values.isFeatured || false,
-        is_active: values.isActive !== undefined ? values.isActive : true,
-        publish_time: publishTime || null,
-        slug: values.slug || null
-      };
-      
-      console.log('Sending blog data:', blogData);
-      console.log('Category ID in blogData:', blogData.category_id);
-      console.log('Category ID type in blogData:', typeof blogData.category_id);
-
-      const response = await fetch('https://api.33kotidham.com/api/v1/blogs/', {
-        method: 'POST',
-        headers: {
-          'accept': 'application/json',
-          'Authorization': authHeader,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(blogData)
-      });
-      
-      console.log('API response status:', response.status);
-      console.log('API response headers:', response.headers);
-
-      if (response.ok) {
-        const createdBlog = await response.json();
-        console.log('Blog created successfully:', createdBlog);
-        message.success('Blog created successfully!');
+        // Reset form
+        setFormData({
+          title: '',
+          subtitle: '',
+          content: '',
+          thumbnail: null,
+          metaDescription: '',
+          tags: '',
+          categoryId: null,
+          isFeatured: false,
+          isActive: true,
+          publishTime: null,
+          slug: '',
+        });
         form.resetFields();
-        setContent('');
-        setThumbnailFile(null);
-        setThumbnailUrl(null);
-        setPublishTime(null);
-      } else if (response.status === 401) {
-        message.error('Authentication failed. Please log in again.');
+        
+        onSuccess?.();
       } else {
-        const errorData = await response.json();
-        console.log('API error response:', errorData);
-        message.error(errorData.detail || 'Failed to create blog');
+        console.error('Blog creation failed:', createResult.payload);
       }
-    } catch (error: any) {
-      console.error('Error creating blog:', error);
-      message.error('Failed to create blog: ' + (error.message || 'Unknown error'));
-    } finally {
-      setLoading(false);
+    } catch (error) {
+      console.error('Error in handleSubmit:', error);
     }
   };
 
@@ -362,74 +188,160 @@ const CreateBlogForm: React.FC = () => {
   ];
 
   return (
-    <Spin spinning={loading}>
-      <Form 
-        form={form} 
-        onFinish={handleSubmit} 
-        layout="vertical" 
-        className="space-y-6 bg-white p-6 rounded-xl shadow-sm"
-      >
-        <Title level={3} className="text-2xl font-bold text-gray-800 border-b pb-4">
-          Create New Blog
-        </Title>
+    <Form form={form} onFinish={handleSubmit} layout="vertical" className="space-y-8">
+      {/* Section 1: Blog Details */}
+      <div className="bg-gradient-to-r from-blue-50 to-blue-100 p-6 rounded-xl border border-blue-200">
+        <h3 className="text-lg font-semibold text-blue-800 mb-4 font-['Philosopher'] flex items-center gap-2">
+          <span className="text-2xl">📝</span>
+          1. Blog Details
+        </h3>
 
-        {/* Blog Title and Subtitle */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <Form.Item
             name="title"
-            label={<span className="font-medium text-gray-700">Blog Title</span>}
-            rules={[{ required: true, message: 'Please enter a blog title' }]}
+            label={<span className="block text-sm font-medium text-gray-700 mb-2">Blog Title</span>}
+            required={true}
           >
             <Input
+              value={formData.title ?? ''}
+              onChange={(e) => handleInputChange('title', e.target.value ?? '')}
               placeholder="Enter blog title"
-              className="py-3"
+              className="w-full px-4 py-3 border border-blue-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-black placeholder-gray-400"
             />
           </Form.Item>
 
           <Form.Item
             name="subtitle"
-            label={<span className="font-medium text-gray-700">Subtitle</span>}
+            label={<span className="block text-sm font-medium text-gray-700 mb-2">Subtitle</span>}
           >
             <Input
+              value={formData.subtitle ?? ''}
+              onChange={(e) => handleInputChange('subtitle', e.target.value ?? '')}
               placeholder="Enter subtitle (optional)"
-              className="py-3"
+              className="w-full px-4 py-3 border border-blue-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-black placeholder-gray-400"
             />
           </Form.Item>
         </div>
 
-        {/* Thumbnail Upload */}
         <Form.Item
-          label={<span className="font-medium text-gray-700">Thumbnail Image</span>}
+          name="slug"
+          label={<span className="block text-sm font-medium text-gray-700 mb-2">Slug</span>}
         >
-          <Upload
-            beforeUpload={handleThumbnailUpload}
-            maxCount={1}
-            accept="image/*"
-            onRemove={() => {
-              setThumbnailFile(null);
-              setThumbnailUrl(null);
-            }}
+          <Input
+            value={formData.slug ?? ''}
+            onChange={(e) => handleInputChange('slug', e.target.value ?? '')}
+            placeholder="Enter custom slug (optional)"
+            className="w-full px-4 py-3 border border-blue-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-black placeholder-gray-400"
+          />
+        </Form.Item>
+
+        <Form.Item
+          name="thumbnail"
+          label={<span className="block text-sm font-medium text-gray-700 mb-2">Thumbnail Image</span>}
+        >
+          <div
+            {...getRootProps()}
+            className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer transition-colors duration-200 border-blue-300 bg-blue-50 hover:bg-blue-100"
           >
-            <Button icon={<UploadOutlined />}>Click to Upload</Button>
-            <p className="text-xs text-gray-500 mt-2">PNG, JPG, JPEG up to 10MB</p>
-          </Upload>
-          {thumbnailFile && (
-            <div className="mt-2 text-sm text-gray-600">
-              Selected: {thumbnailFile.name}
+            <input {...getInputProps()} />
+            <div className="flex flex-col items-center justify-center pt-5 pb-6">
+              <svg
+                className="w-8 h-8 mb-2 text-blue-400"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
+                />
+              </svg>
+              <p className="mb-1 text-sm font-medium text-blue-600">
+                {formData.thumbnail ? `Selected: ${formData.thumbnail.name}` : 'Click or drag to upload thumbnail image'}
+              </p>
+              <p className="text-xs text-blue-500">PNG, JPG, JPEG up to 10MB</p>
+            </div>
+          </div>
+          
+          {/* Display selected thumbnail preview */}
+          {formData.thumbnail && (
+            <div className="mt-4">
+              <div className="relative bg-white p-3 rounded-lg border border-blue-200">
+                {(() => {
+                  let previewUrl = '';
+                  try {
+                    previewUrl = createImagePreviewUrl(formData.thumbnail);
+                  } catch (e) {
+                    // If we can't create a preview, we'll show the file icon
+                  }
+                  
+                  return (
+                    <>
+                      {previewUrl ? (
+                        <div className="relative w-full h-48 mb-2 rounded overflow-hidden">
+                          <img 
+                            src={previewUrl} 
+                            alt="Preview" 
+                            className="w-full h-full object-cover"
+                            onError={(e) => {
+                              revokeImagePreviewUrl(previewUrl);
+                              e.currentTarget.style.display = 'none';
+                            }}
+                          />
+                        </div>
+                      ) : (
+                        <div className="flex items-center justify-center w-full h-48 mb-2 bg-blue-50 rounded">
+                          <svg className="w-8 h-8 text-blue-400" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clipRule="evenodd" />
+                          </svg>
+                        </div>
+                      )}
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-gray-600 truncate flex-1">{formData.thumbnail.name}</span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (previewUrl) {
+                              revokeImagePreviewUrl(previewUrl);
+                            }
+                            handleInputChange('thumbnail', null);
+                          }}
+                          className="text-red-500 hover:text-red-700 text-xs"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                      <div className="text-xs text-gray-400 mt-1">
+                        {(formData.thumbnail.size / 1024 / 1024).toFixed(2)} MB
+                      </div>
+                    </>
+                  );
+                })()}
+              </div>
             </div>
           )}
         </Form.Item>
+      </div>
 
-        {/* Blog Content - Rich Text Editor */}
+      {/* Section 2: Content */}
+      <div className="bg-gradient-to-r from-green-50 to-green-100 p-6 rounded-xl border border-green-200">
+        <h3 className="text-lg font-semibold text-green-800 mb-4 font-['Philosopher'] flex items-center gap-2">
+          <span className="text-2xl">✍️</span>
+          2. Content
+        </h3>
+
         <Form.Item
-          label={<span className="font-medium text-gray-700">Content</span>}
-          required
+          name="content"
+          label={<span className="block text-sm font-medium text-gray-700 mb-2">Blog Content</span>}
+          required={true}
         >
-          <div className="border border-gray-300 rounded-lg overflow-hidden">
+          <div className="border border-green-200 rounded-lg overflow-hidden bg-white">
             {typeof window !== 'undefined' && (
               <ReactQuill
-                value={content}
-                onChange={handleContentChange}
+                value={formData.content}
+                onChange={(value) => handleInputChange('content', value)}
                 modules={modules}
                 formats={formats}
                 className="h-64"
@@ -438,175 +350,134 @@ const CreateBlogForm: React.FC = () => {
             )}
           </div>
         </Form.Item>
+      </div>
 
-        {/* Meta Description */}
+      {/* Section 3: SEO & Metadata */}
+      <div className="bg-gradient-to-r from-purple-50 to-purple-100 p-6 rounded-xl border border-purple-200">
+        <h3 className="text-lg font-semibold text-purple-800 mb-4 font-['Philosopher'] flex items-center gap-2">
+          <span className="text-2xl">🔍</span>
+          3. SEO & Metadata
+        </h3>
+
         <Form.Item
           name="metaDescription"
-          label={<span className="font-medium text-gray-700">Meta Description</span>}
+          label={<span className="block text-sm font-medium text-gray-700 mb-2">Meta Description</span>}
         >
-          <TextArea
+          <Input.TextArea
+            value={formData.metaDescription ?? ''}
+            onChange={(e) => handleInputChange('metaDescription', e.target.value ?? '')}
             rows={3}
             placeholder="Enter meta description for SEO (optional)"
+            className="w-full px-4 py-3 border border-purple-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-black placeholder-gray-400"
           />
         </Form.Item>
 
-        {/* Tags */}
         <Form.Item
           name="tags"
-          label={<span className="font-medium text-gray-700">Tags</span>}
+          label={<span className="block text-sm font-medium text-gray-700 mb-2">Tags</span>}
         >
           <Input
+            value={formData.tags ?? ''}
+            onChange={(e) => handleInputChange('tags', e.target.value ?? '')}
             placeholder="Enter tags separated by commas (e.g., spiritual, astrology, remedies)"
+            className="w-full px-4 py-3 border border-purple-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-black placeholder-gray-400"
           />
         </Form.Item>
 
-        {/* Category and Publish Time */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <Form.Item
             name="categoryId"
-            label={<span className="font-medium text-gray-700">Category</span>}
+            label={<span className="block text-sm font-medium text-gray-700 mb-2">Category ID</span>}
           >
-            <div className="flex gap-2">
-              <Spin spinning={categoriesLoading}>
-                <Select
-                  placeholder="Select a category"
-                  className="flex-1"
-                  showSearch
-                  optionFilterProp="children"
-                  onChange={(value) => {
-                    console.log('Category selected in Select onChange:', value);
-                    console.log('Category type in Select onChange:', typeof value);
-                    // Also update the form field directly to ensure it's set
-                    form.setFieldsValue({ categoryId: value });
-                    // Log all available categories for comparison
-                    console.log('Available categories:', categories);
-                  }}
-                  onSelect={(value) => {
-                    console.log('Category selected (onSelect):', value);
-                    console.log('Category type (onSelect):', typeof value);
-                  }}
-                >
-                  {categories.map(category => (
-                    <Option key={category.id} value={category.id.toString()}>
-                      {category.name}
-                    </Option>
-                  ))}
-                </Select>
-              </Spin>
-              <Button 
-                type="primary" 
-                icon={<PlusOutlined />} 
-                onClick={showCategoryModal}
-              />
-            </div>
+            <Input
+              type="number"
+              value={formData.categoryId?.toString() ?? ''}
+              onChange={(e) => handleInputChange('categoryId', parseInt(e.target.value) || null)}
+              placeholder="Enter category ID (optional)"
+              className="w-full px-4 py-3 border border-purple-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-black placeholder-gray-400"
+            />
           </Form.Item>
 
           <Form.Item
             name="publishTime"
-            label={<span className="font-medium text-gray-700">Publish Time</span>}
+            label={<span className="block text-sm font-medium text-gray-700 mb-2">Publish Time</span>}
           >
             <DatePicker
               showTime
+              value={formData.publishTime ? dayjs(formData.publishTime) : null}
+              onChange={(date) => handleInputChange('publishTime', date ? date.toISOString() : null)}
               placeholder="Select publish time (optional)"
-              onChange={(date, dateString) => setPublishTime(dateString as string)}
               className="w-full"
             />
           </Form.Item>
         </div>
+      </div>
 
-        {/* Slug */}
-        <Form.Item
-          name="slug"
-          label={<span className="font-medium text-gray-700">Slug</span>}
-        >
-          <Input
-            placeholder="Enter custom slug (optional)"
-          />
-        </Form.Item>
+      {/* Section 4: Settings */}
+      <div className="bg-gradient-to-r from-gray-50 to-gray-100 p-6 rounded-xl border border-gray-200">
+        <h3 className="text-lg font-semibold text-gray-800 mb-4 font-['Philosopher'] flex items-center gap-2">
+          <span className="text-2xl">⚙️</span>
+          4. Settings
+        </h3>
 
-        {/* Checkboxes for featured and active status */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <Form.Item 
-            name="isFeatured" 
-            valuePropName="checked"
-          >
-            <Checkbox>
-              <span className="font-medium text-gray-700">Featured Blog</span>
+        <div className="flex items-center gap-6">
+          <Form.Item name="isFeatured" valuePropName="checked">
+            <Checkbox
+              checked={formData.isFeatured ?? false}
+              onChange={(e) => handleInputChange('isFeatured', e.target.checked ?? false)}
+              className="flex items-center gap-2 text-sm font-medium text-gray-700"
+            >
+              Featured Blog
             </Checkbox>
           </Form.Item>
 
-          <Form.Item 
-            name="isActive" 
-            valuePropName="checked"
-            initialValue={true}
-          >
-            <Checkbox defaultChecked>
-              <span className="font-medium text-gray-700">Active</span>
+          <Form.Item name="isActive" valuePropName="checked">
+            <Checkbox
+              checked={formData.isActive ?? true}
+              onChange={(e) => handleInputChange('isActive', e.target.checked ?? true)}
+              className="flex items-center gap-2 text-sm font-medium text-gray-700"
+            >
+              Active
             </Checkbox>
           </Form.Item>
         </div>
+      </div>
 
-        {/* Form Actions */}
-        <Form.Item>
-          <div className="flex justify-end space-x-3 pt-4">
-            <Button 
-              type="default" 
-              onClick={() => {
-                form.resetFields();
-                setContent('');
-                setThumbnailFile(null);
-                setThumbnailUrl(null);
-                setPublishTime(null);
-              }}
-              className="px-6"
-            >
-              Cancel
-            </Button>
-            <Button 
-              type="primary" 
-              htmlType="submit"
-              className="px-6 bg-blue-600 hover:bg-blue-700"
-            >
-              Publish Blog
-            </Button>
-          </div>
-        </Form.Item>
-
-        {/* Add Category Modal */}
-        <Modal
-          title="Add New Category"
-          visible={isCategoryModalVisible}
-          onOk={handleCategoryModalOk}
-          onCancel={handleCategoryModalCancel}
-          okText="Create Category"
-          cancelText="Cancel"
-          confirmLoading={loading}
-        >
-          <Form layout="vertical">
-            <Form.Item
-              label="Category Name"
-              required
-            >
-              <Input
-                value={newCategory.name}
-                onChange={(e) => setNewCategory({...newCategory, name: e.target.value})}
-                placeholder="Enter category name"
-              />
-            </Form.Item>
-            <Form.Item
-              label="Description"
-            >
-              <TextArea
-                value={newCategory.description}
-                onChange={(e) => setNewCategory({...newCategory, description: e.target.value})}
-                placeholder="Enter category description (optional)"
-                rows={3}
-              />
-            </Form.Item>
-          </Form>
-        </Modal>
-      </Form>
-    </Spin>
+      {/* Form Actions */}
+      <Form.Item name="submit">
+        <div className="flex gap-4">
+          <Button
+            type="primary"
+            htmlType="submit"
+            className="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white px-8 py-3 rounded-lg font-medium border-none"
+          >
+            Create Blog
+          </Button>
+          <Button
+            type="default"
+            onClick={() => {
+              setFormData({
+                title: '',
+                subtitle: '',
+                content: '',
+                thumbnail: null,
+                metaDescription: '',
+                tags: '',
+                categoryId: null,
+                isFeatured: false,
+                isActive: true,
+                publishTime: null,
+                slug: '',
+              });
+              form.resetFields();
+            }}
+            className="bg-gray-500 hover:bg-gray-600 text-white px-8 py-3 rounded-lg font-medium border-none"
+          >
+            Reset
+          </Button>
+        </div>
+      </Form.Item>
+    </Form>
   );
 };
 

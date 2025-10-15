@@ -4,6 +4,7 @@ import authReducer from '@/store/slices/authSlice';
 import pujaReducer from '@/store/slices/pujaSlice';
 import planReducer from '@/store/slices/planSlice';
 import chadawaReducer from '@/store/slices/chadawaSlice';
+import blogReducer from '@/store/slices/blogSlice';
 
 const store = configureStore({
   reducer: {
@@ -11,6 +12,7 @@ const store = configureStore({
     puja: pujaReducer,
     plan: planReducer,
     chadawa: chadawaReducer,
+    blog: blogReducer,
   },
 });
 
