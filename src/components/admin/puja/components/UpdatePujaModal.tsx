@@ -2,10 +2,11 @@
 
 import React, { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { Modal, Form, Input, Button, Checkbox, Select, Typography, Row, Col } from 'antd';
+import { Modal, Form, Input, Button, Checkbox, Select, Typography, Row, Col, Spin } from 'antd';
 import { useDropzone } from 'react-dropzone';
 import { RootState } from '@/store';
 import { fetchPujaById, updatePuja, uploadPujaImages } from '@/store/slices/pujaSlice';
+import { fetchPlans } from '@/store/slices/planSlice'; // Import fetchPlans
 import { AppDispatch } from '@/store';
 
 const { Text } = Typography;
@@ -25,7 +26,7 @@ interface PujaFormData {
   templeAddress?: string | null;
   templeDescription?: string | null;
   benefits?: Benefit[] | null;
-  selectedPlanIds?: string[] | null;
+  selectedPlanIds?: number[] | null;
   prasadPrice?: number | null;
   prasadStatus?: boolean | null;
   dakshinaPrices?: string | null;
@@ -63,6 +64,8 @@ const UpdatePujaModal: React.FC<UpdatePujaModalProps> = ({
   const safeOnSuccess = onSuccess ?? (() => {});
   
   const dispatch = useDispatch<AppDispatch>();
+  // Access plans from Redux store
+  const { plans, isLoading: plansLoading } = useSelector((state: RootState) => state.plan);
   // Track if images have been changed
   const [imagesChanged, setImagesChanged] = useState(false);
   const [form] = Form.useForm();
@@ -94,6 +97,11 @@ const UpdatePujaModal: React.FC<UpdatePujaModalProps> = ({
     isFeatured: false,
   });
 
+  // Fetch plans when component mounts
+  useEffect(() => {
+    dispatch(fetchPlans());
+  }, [dispatch]);
+
   // Effect to populate form when pujaData is received
   useEffect(() => {
     if (pujaData && typeof pujaData === 'object' && isVisible) {
@@ -114,7 +122,7 @@ const UpdatePujaModal: React.FC<UpdatePujaModalProps> = ({
             ];
 
         const safeSelectedPlanIds = Array.isArray(pujaData.selected_plan_ids) 
-          ? pujaData.selected_plan_ids.filter((id: any) => id != null).map((id: any) => id.toString())
+          ? pujaData.selected_plan_ids.filter((id: any) => id != null).map((id: any) => Number(id))
           : [];
 
         const newFormData = {
@@ -273,7 +281,7 @@ const UpdatePujaModal: React.FC<UpdatePujaModalProps> = ({
             safeValue = Array.isArray(value) ? value : [];
             break;
           case 'selectedPlanIds':
-            safeValue = Array.isArray(value) ? value.filter(v => v != null).map(v => v.toString()) : [];
+            safeValue = Array.isArray(value) ? value.filter(v => v != null).map(v => Number(v)) : [];
             break;
           case 'prasadPrice':
             const numValue = Number(value);
@@ -411,8 +419,8 @@ const UpdatePujaModal: React.FC<UpdatePujaModalProps> = ({
             }))
           : [],
         selected_plan_ids: Array.isArray(formData.selectedPlanIds) 
-          ? formData.selectedPlanIds.filter(id => id != null).map(id => id.toString())
-          : [],
+          ? formData.selectedPlanIds.filter(id => id != null)
+          : []
       } as any;
       
       console.log("Calling updatePuja with:", requestData);
@@ -865,11 +873,23 @@ const UpdatePujaModal: React.FC<UpdatePujaModalProps> = ({
                   borderRadius: '0.5rem',
                   border: '1px solid #E9D5FF',
                 }}
+                loading={plansLoading}
               >
-                <Option value="1">Basic Puja Package - ₹5,000</Option>
-                <Option value="2">Premium VIP Experience - ₹15,000</Option>
-                <Option value="3">Standard Family Package - ₹8,000</Option>
-                <Option value="4">Exclusive VIP Darshan - ₹25,000</Option>
+                {plansLoading ? (
+                  <Option value="loading" disabled>
+                    <Spin size="small" /> Loading plans...
+                  </Option>
+                ) : plans && plans.length > 0 ? (
+                  plans.map((plan) => (
+                    <Option key={plan.id} value={plan.id.toString()}>
+                      {plan.name} - ₹{parseFloat(plan.actual_price).toFixed(2)}
+                    </Option>
+                  ))
+                ) : (
+                  <Option value="no-plans" disabled>
+                    No plans available
+                  </Option>
+                )}
               </Select>
               <Text className="text-xs text-gray-500 mt-1">Hold Ctrl/Cmd to select multiple plans</Text>
             </Form.Item>

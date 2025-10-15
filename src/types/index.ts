@@ -254,7 +254,7 @@ export interface Puja {
     title: string;
     description: string;
   }[];
-  selectedPlanIds: string[];
+  selectedPlanIds: number[];
   prasadPrice: number;
   prasadStatus: boolean;
   dakshinaPrices: string;

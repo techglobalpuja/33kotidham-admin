@@ -2,10 +2,11 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useDispatch } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
 import { createPuja, uploadPujaImages, addPujaBenefit } from '@/store/slices/pujaSlice';
-import { AppDispatch } from '@/store';
-import { Form, Input, Button, Checkbox, Select, Typography } from 'antd';
+import { fetchPlans } from '@/store/slices/planSlice'; // Import fetchPlans
+import { AppDispatch, RootState } from '@/store'; // Import RootState
+import { Form, Input, Button, Checkbox, Select, Typography, Spin } from 'antd'; // Import Spin for loading indicator
 import { useDropzone } from 'react-dropzone';
 
 const { Text } = Typography;
@@ -25,7 +26,7 @@ interface PujaFormData {
   templeAddress: string;
   templeDescription: string;
   benefits: Benefit[];
-  selectedPlanIds: string[];
+  selectedPlanIds: number[];
   prasadPrice: number;
   prasadStatus: boolean;
   dakshinaPrices: string;
@@ -47,6 +48,10 @@ const CreatePujaForm: React.FC<CreatePujaFormProps> = ({ onSuccess }) => {
   const router = useRouter();
   const dispatch = useDispatch<AppDispatch>();
   const [form] = Form.useForm();
+  
+  // Access plans from Redux store
+  const { plans, isLoading: plansLoading } = useSelector((state: RootState) => state.plan);
+  
   const [formData, setFormData] = useState<PujaFormData>({
     pujaName: '',
     subHeading: '',
@@ -74,6 +79,11 @@ const CreatePujaForm: React.FC<CreatePujaFormProps> = ({ onSuccess }) => {
     isActive: true,
     isFeatured: false,
   });
+
+  // Fetch plans when component mounts
+  useEffect(() => {
+    dispatch(fetchPlans());
+  }, [dispatch]);
 
   // Dropzone for Puja Images
   const { getRootProps: getPujaRootProps, getInputProps: getPujaInputProps } = useDropzone({
@@ -243,6 +253,7 @@ const CreatePujaForm: React.FC<CreatePujaFormProps> = ({ onSuccess }) => {
         manokamna_prices_usd: formData.manokamnaPricesUSD ?? '',
         is_manokamna_active: formData.manokamnaStatus ?? false,
         category: formData.category ?? 'general',
+        selected_plan_ids: formData.selectedPlanIds ?? [], // Already numbers
       } as any;
       
       console.log('Creating puja with data:', requestData);
@@ -614,11 +625,23 @@ const CreatePujaForm: React.FC<CreatePujaFormProps> = ({ onSuccess }) => {
               borderRadius: '0.5rem',
               border: '1px solid #E9D5FF',
             }}
+            loading={plansLoading}
           >
-            <Option value="1">Basic Puja Package - ₹5,000</Option>
-            <Option value="2">Premium VIP Experience - ₹15,000</Option>
-            <Option value="3">Standard Family Package - ₹8,000</Option>
-            <Option value="4">Exclusive VIP Darshan - ₹25,000</Option>
+            {plansLoading ? (
+              <Option value="loading" disabled>
+                <Spin size="small" /> Loading plans...
+              </Option>
+            ) : plans && plans.length > 0 ? (
+              plans.map((plan) => (
+                <Option key={plan.id} value={plan.id.toString()}>
+                  {plan.name} - ₹{parseFloat(plan.actual_price).toFixed(2)}
+                </Option>
+              ))
+            ) : (
+              <Option value="no-plans" disabled>
+                No plans available
+              </Option>
+            )}
           </Select>
           <Text className="text-xs text-gray-500 mt-1">Hold Ctrl/Cmd to select multiple plans</Text>
         </Form.Item>
