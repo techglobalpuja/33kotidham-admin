@@ -133,7 +133,7 @@ export interface PujaFormData {
   manokamnaStatus: boolean;
   
   // General
-  category: string;
+  category: string[];
   isActive: boolean;
   isFeatured: boolean;
 }
@@ -144,7 +144,7 @@ export interface ChawadaItem {
   description: string;
   price: number;
   image: string;
-  category: string;
+  category: string[];
   inStock: boolean;
   quantity: number;
 }
@@ -176,7 +176,8 @@ export interface Blog {
   thumbnail_image: string;
   meta_description: string;
   tags: string;
-  category_id: number;
+  category_ids: number[]; // Changed from category_id to category_ids array
+  categories?: any[]; // Add optional categories array to match API response
   is_featured: boolean;
   is_active: boolean;
   publish_time: string;
@@ -199,7 +200,7 @@ export interface Product {
   price: number;
   image: string;
   description: string;
-  category: string;
+  category: string[];
   inStock: boolean;
   quantity: number;
   isActive: boolean;
@@ -223,7 +224,7 @@ export interface ContentUpload {
   title: string;
   type: 'video' | 'image' | 'document' | 'certificate';
   url: string;
-  category: string;
+  category: string[];
   uploadDate: string;
   size: string;
 }
@@ -291,7 +292,7 @@ export interface Puja {
   manokamanaPrices: string;
   manokamanaPricesUSD: string;
   manokamnaStatus: boolean;
-  category: string;
+  category: string[];
   isActive: boolean;
   isFeatured: boolean;
   createdDate: string;
@@ -331,4 +332,13 @@ export interface UserProfile {
     birthPlace?: string;
     gotra?: string;
   };
+}
+
+export interface Category {
+  id: number;
+  name: string;
+  description: string;
+  is_active: boolean;
+  created_at?: string;
+  updated_at?: string;
 }

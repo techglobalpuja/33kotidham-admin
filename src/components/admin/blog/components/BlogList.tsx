@@ -9,6 +9,7 @@ import { EditOutlined, DeleteOutlined, EyeOutlined, ExclamationCircleOutlined } 
 import UpdateBlogModal from './UpdateBlogModal';
 import ViewBlogModal from './ViewBlogModal';
 import dayjs from 'dayjs';
+import { useCategories } from '@/hooks/useCategories';
 
 const { Search } = Input;
 const { confirm } = Modal;
@@ -21,7 +22,8 @@ interface Blog {
   thumbnail_image: string;
   meta_description: string;
   tags: string;
-  category_id: number;
+  category_ids: number[]; // Changed from category_id to category_ids
+  categories: any[]; // Add categories array to match API response
   is_featured: boolean;
   is_active: boolean;
   publish_time: string;
@@ -37,6 +39,7 @@ interface BlogListProps {
 const BlogList: React.FC<BlogListProps> = ({ viewMode = 'grid' }) => {
   const dispatch = useDispatch<AppDispatch>();
   const { blogs: rawBlogs, isLoading, selectedBlog } = useSelector((state: RootState) => state.blog);
+  const { categories } = useCategories();
   const [searchText, setSearchText] = useState('');
   const [isUpdateModalOpen, setIsUpdateModalOpen] = useState(false);
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
@@ -57,12 +60,9 @@ const BlogList: React.FC<BlogListProps> = ({ viewMode = 'grid' }) => {
         thumbnail_image: (blog?.thumbnail_image ?? '').toString().trim(),
         meta_description: (blog?.meta_description ?? '').toString().trim(),
         tags: (blog?.tags ?? '').toString().trim(),
-        category_id: (() => {
-          const categoryId = blog?.category_id;
-          if (categoryId === null || categoryId === undefined) return 0;
-          const numCategoryId = Number(categoryId);
-          return isNaN(numCategoryId) ? 0 : Math.max(0, numCategoryId);
-        })(),
+        category_ids: Array.isArray(blog?.category_ids) ? blog.category_ids : [], // Changed from category_id to category_ids
+        // Preserve the full categories array from API response
+        categories: Array.isArray(blog?.categories) ? blog.categories : [],
         is_featured: Boolean(blog?.is_featured ?? false),
         is_active: Boolean(blog?.is_active ?? true),
         publish_time: (blog?.publish_time ?? new Date().toISOString()).toString().trim(),
@@ -150,6 +150,14 @@ const BlogList: React.FC<BlogListProps> = ({ viewMode = 'grid' }) => {
     return tags ? tags.split(',').map(tag => tag.trim()) : [];
   };
 
+  const getCategoryNames = (categoryIds: number[]) => {
+    if (!categories) return 'Loading...';
+    return categoryIds.map(id => {
+      const category = categories.find(cat => cat.id === id);
+      return category ? category.name : 'Unknown';
+    }).join(', ');
+  };
+
   if (isLoading) {
     return (
       <div className="flex justify-center items-center py-8">
@@ -193,10 +201,11 @@ const BlogList: React.FC<BlogListProps> = ({ viewMode = 'grid' }) => {
       ellipsis: true,
     },
     {
-      title: 'Category ID',
-      dataIndex: 'category_id',
-      key: 'category_id',
-      width: 100,
+      title: 'Categories',
+      dataIndex: 'category_ids',
+      key: 'category_ids',
+      width: 150,
+      render: (categoryIds: number[]) => getCategoryNames(categoryIds),
     },
     {
       title: 'Tags',
@@ -357,6 +366,11 @@ const BlogList: React.FC<BlogListProps> = ({ viewMode = 'grid' }) => {
                 
                 <p className="text-sm text-blue-600 font-medium">{blog.subtitle}</p>
                 
+                <div className="flex items-center text-sm text-gray-500">
+                  <span className="font-medium">Categories:</span>
+                  <span className="ml-1">{getCategoryNames(blog.category_ids)}</span>
+                </div>
+                
                 <div className="flex flex-wrap gap-1 mt-2">
                   {formatTags(blog.tags).slice(0, 3).map((tag, index) => (
                     <span key={index} className="inline-block px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
@@ -409,6 +423,9 @@ const BlogList: React.FC<BlogListProps> = ({ viewMode = 'grid' }) => {
                     Blog Details
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Categories
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Tags
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -422,7 +439,7 @@ const BlogList: React.FC<BlogListProps> = ({ viewMode = 'grid' }) => {
               <tbody className="bg-white divide-y divide-gray-200">
                 {(filteredBlogs ?? []).length === 0 ? (
                   <tr>
-                    <td colSpan={4} className="px-6 py-12 text-center">
+                    <td colSpan={5} className="px-6 py-12 text-center">
                       <div className="text-gray-400 text-4xl mb-4">🔍</div>
                       <h3 className="text-lg font-medium text-gray-900 mb-2">No blogs found</h3>
                       <p className="text-gray-500">Try adjusting your search criteria</p>
@@ -444,6 +461,9 @@ const BlogList: React.FC<BlogListProps> = ({ viewMode = 'grid' }) => {
                           <div className="text-xs text-gray-500">Published: {dayjs(blog.publish_time).format('MMM D, YYYY')}</div>
                         </div>
                       </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {getCategoryNames(blog.category_ids)}
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex flex-wrap gap-1">

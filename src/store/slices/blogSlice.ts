@@ -10,7 +10,8 @@ export interface Blog {
   thumbnail_image: string;
   meta_description: string;
   tags: string;
-  category_id: number;
+  category_ids: number[]; // Changed from category_id to category_ids array
+  categories?: any[]; // Add optional categories array to match API response
   is_featured: boolean;
   is_active: boolean;
   publish_time: string;

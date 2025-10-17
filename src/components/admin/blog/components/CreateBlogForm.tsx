@@ -4,16 +4,20 @@ import React, { useState } from 'react';
 import { useDispatch } from 'react-redux';
 import { createBlog, uploadBlogThumbnail } from '@/store/slices/blogSlice';
 import { AppDispatch } from '@/store';
-import { Form, Input, Button, Checkbox, Typography, DatePicker } from 'antd';
+import { Form, Input, Button, Checkbox, Typography, DatePicker, Modal, Select, message } from 'antd';
 import { useDropzone } from 'react-dropzone';
 import dynamic from 'next/dynamic';
 import dayjs from 'dayjs';
+import { PlusOutlined } from '@ant-design/icons';
+import { useCategories } from '@/hooks/useCategories';
+import { Category } from '@/types';
 
 // Dynamically import ReactQuill to avoid SSR issues
 const ReactQuill = dynamic(() => import('react-quill'), { ssr: false });
 import 'react-quill/dist/quill.snow.css';
 
 const { Text } = Typography;
+const { Option } = Select;
 
 interface BlogFormData {
   title: string;
@@ -22,7 +26,7 @@ interface BlogFormData {
   thumbnail: File | null;
   metaDescription: string;
   tags: string;
-  categoryId: number | null;
+  categoryIds: number[]; // Changed from categoryId to categoryIds
   isFeatured: boolean;
   isActive: boolean;
   publishTime: string | null;
@@ -36,6 +40,9 @@ interface CreateBlogFormProps {
 const CreateBlogForm: React.FC<CreateBlogFormProps> = ({ onSuccess }) => {
   const dispatch = useDispatch<AppDispatch>();
   const [form] = Form.useForm();
+  const { categories, isLoading: categoriesLoading, createNewCategory, refetchCategories } = useCategories();
+  const [isCreateCategoryModalVisible, setIsCreateCategoryModalVisible] = useState(false);
+  const [newCategoryForm] = Form.useForm();
   
   const [formData, setFormData] = useState<BlogFormData>({
     title: '',
@@ -44,7 +51,7 @@ const CreateBlogForm: React.FC<CreateBlogFormProps> = ({ onSuccess }) => {
     thumbnail: null,
     metaDescription: '',
     tags: '',
-    categoryId: null,
+    categoryIds: [], // Changed from categoryId to categoryIds
     isFeatured: false,
     isActive: true,
     publishTime: null,
@@ -131,7 +138,7 @@ const CreateBlogForm: React.FC<CreateBlogFormProps> = ({ onSuccess }) => {
         thumbnail_image: thumbnailUrl,
         meta_description: formData.metaDescription?.trim() || '',
         tags: formData.tags?.trim() || '',
-        category_id: formData.categoryId || 0,
+        category_ids: formData.categoryIds, // Changed from category_id to category_ids
         is_featured: formData.isFeatured ?? false,
         is_active: formData.isActive ?? true,
         publish_time: formData.publishTime || new Date().toISOString(),
@@ -152,7 +159,7 @@ const CreateBlogForm: React.FC<CreateBlogFormProps> = ({ onSuccess }) => {
           thumbnail: null,
           metaDescription: '',
           tags: '',
-          categoryId: null,
+          categoryIds: [], // Changed from categoryId to categoryIds
           isFeatured: false,
           isActive: true,
           publishTime: null,
@@ -169,26 +176,102 @@ const CreateBlogForm: React.FC<CreateBlogFormProps> = ({ onSuccess }) => {
     }
   };
 
-  // Rich text editor modules configuration
+  // Enhanced rich text editor modules configuration with more Word-like functionality
   const modules = {
     toolbar: [
       [{ 'header': [1, 2, 3, 4, 5, 6, false] }],
       ['bold', 'italic', 'underline', 'strike'],
       [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+      [{ 'align': [] }],
       ['link', 'image'],
-      ['clean']
+      ['clean'],
+      ['undo', 'redo']
     ],
+    clipboard: {
+      matchVisual: true,
+    },
+    history: {
+      delay: 1000,
+      maxStack: 500,
+      userOnly: false
+    }
   };
 
   const formats = [
     'header',
+    'font', 'size',
     'bold', 'italic', 'underline', 'strike',
-    'list', 'bullet',
-    'link', 'image'
+    'blockquote', 'code-block',
+    'list', 'bullet', 'indent',
+    'align', 'line-height',
+    'link', 'image', 'video',
+    'color', 'background',
+    'clean'
   ];
+
+  // Handle creating a new category
+  const handleCreateCategory = async (values: any) => {
+    try {
+      const newCategoryData: Omit<Category, 'id' | 'created_at' | 'updated_at'> = {
+        name: values.name,
+        description: values.description || '',
+        is_active: true,
+      };
+      
+      await createNewCategory(newCategoryData);
+      message.success('Category created successfully');
+      setIsCreateCategoryModalVisible(false);
+      newCategoryForm.resetFields();
+      // Refresh categories
+      refetchCategories();
+    } catch (error) {
+      message.error('Failed to create category');
+      console.error('Error creating category:', error);
+    }
+  };
 
   return (
     <Form form={form} onFinish={handleSubmit} layout="vertical" className="space-y-8">
+      {/* Create Category Modal */}
+      <Modal
+        title="Create New Category"
+        open={isCreateCategoryModalVisible}
+        onCancel={() => setIsCreateCategoryModalVisible(false)}
+        footer={null}
+      >
+        <Form
+          form={newCategoryForm}
+          onFinish={handleCreateCategory}
+          layout="vertical"
+        >
+          <Form.Item
+            name="name"
+            label="Category Name"
+            rules={[{ required: true, message: 'Please enter category name' }]}
+          >
+            <Input placeholder="Enter category name" />
+          </Form.Item>
+          
+          <Form.Item
+            name="description"
+            label="Description"
+          >
+            <Input.TextArea placeholder="Enter category description (optional)" rows={3} />
+          </Form.Item>
+          
+          <Form.Item>
+            <div className="flex justify-end gap-2">
+              <Button onClick={() => setIsCreateCategoryModalVisible(false)}>
+                Cancel
+              </Button>
+              <Button type="primary" htmlType="submit">
+                Create Category
+              </Button>
+            </div>
+          </Form.Item>
+        </Form>
+      </Modal>
+      
       {/* Section 1: Blog Details */}
       <div className="bg-gradient-to-r from-blue-50 to-blue-100 p-6 rounded-xl border border-blue-200">
         <h3 className="text-lg font-semibold text-blue-800 mb-4 font-['Philosopher'] flex items-center gap-2">
@@ -344,10 +427,13 @@ const CreateBlogForm: React.FC<CreateBlogFormProps> = ({ onSuccess }) => {
                 onChange={(value) => handleInputChange('content', value)}
                 modules={modules}
                 formats={formats}
-                className="h-64"
-                placeholder="Write your blog content here..."
+                className="blog-editor"
+                placeholder="Write your blog content here... Start typing to begin..."
               />
             )}
+          </div>
+          <div className="text-xs text-gray-500 mt-1">
+            Tip: The editor expands automatically as you add more content. Use the toolbar for formatting options.
           </div>
         </Form.Item>
       </div>
@@ -386,16 +472,32 @@ const CreateBlogForm: React.FC<CreateBlogFormProps> = ({ onSuccess }) => {
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <Form.Item
-            name="categoryId"
-            label={<span className="block text-sm font-medium text-gray-700 mb-2">Category ID</span>}
+            name="categoryIds"
+            label={<span className="block text-sm font-medium text-gray-700 mb-2">Categories</span>}
           >
-            <Input
-              type="number"
-              value={formData.categoryId?.toString() ?? ''}
-              onChange={(e) => handleInputChange('categoryId', parseInt(e.target.value) || null)}
-              placeholder="Enter category ID (optional)"
-              className="w-full px-4 py-3 border border-purple-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-black placeholder-gray-400"
-            />
+            <div className="flex gap-2">
+              <Select
+                mode="multiple"
+                value={formData.categoryIds}
+                onChange={(value) => handleInputChange('categoryIds', value)}
+                loading={categoriesLoading}
+                placeholder="Select categories"
+                className="flex-1"
+                showSearch
+                optionFilterProp="children"
+              >
+                {categories?.map((category) => (
+                  <Option key={category.id} value={category.id}>
+                    {category.name}
+                  </Option>
+                ))}
+              </Select>
+              <Button 
+                type="primary" 
+                icon={<PlusOutlined />} 
+                onClick={() => setIsCreateCategoryModalVisible(true)}
+              />
+            </div>
           </Form.Item>
 
           <Form.Item
@@ -463,7 +565,7 @@ const CreateBlogForm: React.FC<CreateBlogFormProps> = ({ onSuccess }) => {
                 thumbnail: null,
                 metaDescription: '',
                 tags: '',
-                categoryId: null,
+                categoryIds: [], // Changed from categoryId to categoryIds
                 isFeatured: false,
                 isActive: true,
                 publishTime: null,

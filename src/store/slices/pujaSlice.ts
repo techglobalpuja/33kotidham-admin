@@ -31,7 +31,7 @@ export interface Puja {
   manokamna_prices_inr: string;
   manokamna_prices_usd: string;
   is_manokamna_active: boolean;
-  category: string;
+  category: string[];
   is_active?: boolean;
   is_featured?: boolean;
   puja_images?: string[];
@@ -117,7 +117,7 @@ export const updatePuja = createAsyncThunk(
     manokamna_prices_inr: string; 
     manokamna_prices_usd: string; 
     is_manokamna_active: boolean; 
-    category: string;
+    category: string[];
     is_active: boolean;
     is_featured: boolean;
     benefits: Benefit[];
@@ -203,6 +203,19 @@ export const uploadPujaImages = createAsyncThunk(
       }
       
       return uploadResults;
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || error.message);
+    }
+  }
+);
+
+// NEW: Async thunk for deleting a puja image
+export const deletePujaImage = createAsyncThunk(
+  'puja/deletePujaImage',
+  async ({ pujaId, imageId }: { pujaId: string; imageId: number }, { rejectWithValue }) => {
+    try {
+      await axiosInstance.delete(`/api/v1/uploads/puja-images/${imageId}`);
+      return { pujaId, imageId };
     } catch (error: any) {
       return rejectWithValue(error.response?.data?.message || error.message);
     }
@@ -325,6 +338,23 @@ const pujaSlice = createSlice({
         }
       })
       .addCase(addPujaBenefit.rejected, (state, action) => {
+        state.isLoading = false;
+        state.error = action.payload as string;
+      })
+      // NEW: Delete puja image cases
+      .addCase(deletePujaImage.pending, (state) => {
+        state.isLoading = true;
+        state.error = null;
+      })
+      .addCase(deletePujaImage.fulfilled, (state, action) => {
+        state.isLoading = false;
+        state.error = null;
+        // Update selectedPuja images
+        if (state.selectedPuja?.images) {
+          state.selectedPuja.images = state.selectedPuja.images.filter(img => img.id !== action.payload.imageId);
+        }
+      })
+      .addCase(deletePujaImage.rejected, (state, action) => {
         state.isLoading = false;
         state.error = action.payload as string;
       });

@@ -22,13 +22,13 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children, activeTab, onTabCha
     { id: 'overview', label: 'Overview', icon: '📊' },
     { id: 'pujas', label: 'Manage Pujas', icon: '🛕' },
     { id: 'plans', label: 'Manage Plans', icon: '📋' },
-    { id: 'products', label: 'Products', icon: '📦' },
+    // { id: 'products', label: 'Products', icon: '📦' },
     { id: 'users', label: 'Users', icon: '👥' },
     { id: 'chawada', label: 'Chawada Store', icon: '🛍️' },
-    { id: 'orders', label: 'Orders', icon: '📦' },
+    { id: 'orders', label: 'Bookings', icon: '📦' },
     { id: 'blogs', label: 'Blogs', icon: '📝' },
-    { id: 'content', label: 'Content', icon: '📁' },
-    { id: 'analytics', label: 'Analytics', icon: '📈' },
+    // { id: 'content', label: 'Content', icon: '📁' },
+    // { id: 'analytics', label: 'Analytics', icon: '📈' },
   ];
 
   const handleLogout = () => {

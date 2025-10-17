@@ -5,7 +5,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { Modal, Form, Input, Button, Checkbox, Select, Typography, Row, Col } from 'antd';
 import { useDropzone } from 'react-dropzone';
 import { RootState } from '@/store';
-import { fetchPujaById, updatePuja, uploadPujaImages } from '@/store/slices/pujaSlice';
+import { fetchPujaById, updatePuja, uploadPujaImages, deletePujaImage } from '@/store/slices/pujaSlice';
 import { fetchPlans } from '@/store/slices/planSlice';
 import { AppDispatch } from '@/store';
 
@@ -21,12 +21,13 @@ interface PujaFormData {
   pujaName?: string | null;
   subHeading?: string | null;
   about?: string | null;
-  pujaImages?: File[] | null;
+  images?: any[] | null; // ✅ EXISTING IMAGES
+  pujaImages?: File[] | null; // ✅ NEW FILES
   templeImage?: string | null;
   templeAddress?: string | null;
   templeDescription?: string | null;
   benefits?: Benefit[] | null;
-  selectedPlanIds?: string[] | null;
+  selectedPlanIds?: number[] | null;
   prasadPrice?: number | null;
   prasadStatus?: boolean | null;
   dakshinaPrices?: string | null;
@@ -35,7 +36,7 @@ interface PujaFormData {
   manokamnaPrices?: string | null;
   manokamnaPricesUSD?: string | null;
   manokamnaStatus?: boolean | null;
-  category?: string | null;
+  category?: string[] | null;
   isActive?: boolean | null;
   isFeatured?: boolean | null;
 }
@@ -43,7 +44,7 @@ interface PujaFormData {
 interface UpdatePujaModalProps {
   pujaId?: string | null;
   visible?: boolean;
-  pujaData?: any; // Data passed from parent
+  pujaData?: any;
   onCancel?: () => void;
   onSuccess?: () => void;
 }
@@ -57,25 +58,23 @@ const UpdatePujaModal: React.FC<UpdatePujaModalProps> = ({
 }) => {
   console.log("UpdatePujaModal rendered with:", { pujaId, visible, pujaData });
   
-  // Early validation and safety checks
   const safePujaId = (pujaId ?? '').toString().trim();
   const isVisible = Boolean(visible ?? false);
   const safeOnCancel = onCancel ?? (() => {});
   const safeOnSuccess = onSuccess ?? (() => {});
   
   const dispatch = useDispatch<AppDispatch>();
-  
-  // Get plans from Redux store
   const { plans, isLoading: plansLoading } = useSelector((state: RootState) => state.plan);
   
-  // Track if images have been changed
   const [imagesChanged, setImagesChanged] = useState(false);
   const [form] = Form.useForm();
+
   const [formData, setFormData] = useState<PujaFormData>({
     pujaName: '',
     subHeading: '',
     about: '',
-    pujaImages: [],
+    images: [], // ✅ EXISTING IMAGES
+    pujaImages: [], // ✅ NEW FILES
     templeImage: '',
     templeAddress: '',
     templeDescription: '',
@@ -94,30 +93,87 @@ const UpdatePujaModal: React.FC<UpdatePujaModalProps> = ({
     manokamnaPrices: '',
     manokamnaPricesUSD: '',
     manokamnaStatus: false,
-    category: 'general',
+    category: ['general'],
     isActive: true,
     isFeatured: false,
   });
 
-  // Effect to populate form when pujaData is received
+  useEffect(() => { 
+    console.log('Updating form data images:', formData.images)
+},[formData.images])
   useEffect(() => {
-    // Fetch plans when modal is visible
     if (isVisible) {
       dispatch(fetchPlans());
     }
   }, [dispatch, isVisible]);
 
-  // Effect to populate form when pujaData is received
+  // ✅ FORM POPULATION - SET images FROM pujaData
   useEffect(() => {
     if (pujaData && typeof pujaData === 'object' && isVisible) {
       try {
-        console.log('UpdatePujaModal - Setting form data from props:', pujaData);
+        console.log('Setting form data from pujaData:', pujaData);
         
-        // Safe data extraction with comprehensive null handling
+        let safeSelectedPlanIds: number[] = [];
+        if (Array.isArray(pujaData.selected_plan_ids)) {
+          safeSelectedPlanIds = pujaData.selected_plan_ids
+            .filter((id: any) => id != null && !isNaN(Number(id)))
+            .map((id: any) => Number(id));
+        } else if (Array.isArray(pujaData.plan_ids)) {
+          safeSelectedPlanIds = pujaData.plan_ids
+            .filter((id: any) => id != null && !isNaN(Number(id)))
+            .map((id: any) => Number(id));
+        }
+
+        // Handle category data - could be array or comma-separated string
+        let safeCategories: string[] = ['general'];
+        console.log('Processing category data:', { categories: pujaData.categories, category: pujaData.category });
+        
+        // Helper function to process category strings
+        const processCategoryString = (catString: string): string[] => {
+          // Remove any curly braces that might be present
+          const cleanString = catString.replace(/[{}]/g, '');
+          return cleanString
+            .split(',')
+            .map((cat: string) => cat.trim())
+            .filter((cat: string) => cat.length > 0);
+        };
+        
+        if (Array.isArray(pujaData.categories)) {
+          safeCategories = [];
+          // Join all categories and remove curly braces to handle malformed data
+          let joinedCategories = pujaData.categories
+            .filter((cat: any) => cat != null)
+            .join(',')
+            .replace(/[{}]/g, '');
+          // Split by comma to get individual categories
+          safeCategories = joinedCategories
+            .split(',')
+            .map((cat: string) => cat.trim())
+            .filter((cat: string) => cat.length > 0);
+        } else if (typeof pujaData.categories === 'string') {
+          // Handle comma-separated string format
+          safeCategories = processCategoryString(pujaData.categories);
+        } else if (typeof pujaData.category === 'string') {
+          // Handle single category field
+          console.log('Processing category string:', pujaData.category);
+          safeCategories = processCategoryString(pujaData.category);
+        } else if (pujaData.category && typeof pujaData.category === 'object' && pujaData.category.hasOwnProperty('data')) {
+          // Handle case where category is an object with a data property containing the string
+          const categoryData = pujaData.category.data || pujaData.category;
+          if (typeof categoryData === 'string') {
+            safeCategories = processCategoryString(categoryData);
+          }
+        }
+        
+        // Remove duplicates
+        safeCategories = Array.from(new Set(safeCategories));
+        
+        console.log('Processed safeCategories:', safeCategories);
+
         const safeBenefits = Array.isArray(pujaData.benefits) 
           ? pujaData.benefits.map((benefit: any) => ({
-              title: (benefit?.title ?? '').toString().trim(),
-              description: (benefit?.description ?? '').toString().trim()
+              title: (benefit?.benefit_title ?? '').toString().trim(),
+              description: (benefit?.benefit_description ?? '').toString().trim()
             }))
           : [
               { title: '', description: '' },
@@ -126,15 +182,23 @@ const UpdatePujaModal: React.FC<UpdatePujaModalProps> = ({
               { title: '', description: '' },
             ];
 
-        const safeSelectedPlanIds = Array.isArray(pujaData.selected_plan_ids) 
-          ? pujaData.selected_plan_ids.filter((id: any) => id != null).map((id: any) => id.toString())
-          : [];
+        // ✅ SET EXISTING IMAGES
+        let safeImages: any[] = [];
+        if (Array.isArray(pujaData.images)) {
+          safeImages = pujaData.images;
+        } else if (Array.isArray(pujaData.puja_images)) {
+          safeImages = pujaData.puja_images.map((url: string, index: number) => ({
+            id: index + 1,
+            image_url: url
+          }));
+        }
 
         const newFormData = {
           pujaName: (pujaData.name ?? '').toString().trim(),
           subHeading: (pujaData.sub_heading ?? '').toString().trim(),
           about: (pujaData.description ?? '').toString().trim(),
-          pujaImages: [], // Reset to empty File array on update
+          images: safeImages, // ✅ EXISTING IMAGES
+          pujaImages: [],
           templeImage: (pujaData.temple_image_url ?? '').toString().trim(),
           templeAddress: (pujaData.temple_address ?? '').toString().trim(),
           templeDescription: (pujaData.temple_description ?? '').toString().trim(),
@@ -153,24 +217,31 @@ const UpdatePujaModal: React.FC<UpdatePujaModalProps> = ({
           manokamnaPrices: (pujaData.manokamna_prices_inr ?? '').toString().trim(),
           manokamnaPricesUSD: (pujaData.manokamna_prices_usd ?? '').toString().trim(),
           manokamnaStatus: Boolean(pujaData.is_manokamna_active ?? false),
-          category: (pujaData.category ?? 'general').toString().trim(),
+          category: safeCategories,
           isActive: Boolean(pujaData.is_active ?? true),
           isFeatured: Boolean(pujaData.is_featured ?? false),
         };
 
         setFormData(newFormData);
-        
-        // Reset images changed flag when new data is loaded
         setImagesChanged(false);
         
-        // Set Ant Design form values to match the state
+        // Ensure category is an array for the Select component
+        const categoryValue = Array.isArray(newFormData.category) 
+          ? newFormData.category 
+          : typeof newFormData.category === 'string' 
+            ? (newFormData.category as string).replace(/[{}]/g, '').split(',').map((cat: string) => cat.trim()).filter((cat: string) => cat.length > 0)
+            : ['general'];
+        
+        console.log('Setting form fields with categoryValue:', categoryValue);
+        
+        // Set form fields
         form.setFieldsValue({
           pujaName: newFormData.pujaName,
           subHeading: newFormData.subHeading,
           about: newFormData.about,
           templeAddress: newFormData.templeAddress,
           templeDescription: newFormData.templeDescription,
-          selectedPlanIds: newFormData.selectedPlanIds, // Add this missing field
+          selectedPlanIds: newFormData.selectedPlanIds,
           prasadPrice: newFormData.prasadPrice,
           prasadStatus: newFormData.prasadStatus,
           dakshinaPrices: newFormData.dakshinaPrices,
@@ -179,32 +250,32 @@ const UpdatePujaModal: React.FC<UpdatePujaModalProps> = ({
           manokamnaPrices: newFormData.manokamnaPrices,
           manokamnaPricesUSD: newFormData.manokamnaPricesUSD,
           manokamnaStatus: newFormData.manokamnaStatus,
-          category: newFormData.category,
+          category: categoryValue,
           isActive: newFormData.isActive,
           isFeatured: newFormData.isFeatured,
-          // Set benefits with proper nested structure
           benefits: (newFormData.benefits as Array<{title: string, description: string}>).map((benefit, index) => ({
             title: benefit.title,
             description: benefit.description
           }))
         });
         
-        console.log('UpdatePujaModal - Form data and Ant Design form values set successfully');
+        console.log('✅ Form data set successfully:', {
+          planIds: newFormData.selectedPlanIds,
+          imagesCount: newFormData.images?.length || 0
+        });
       } catch (error) {
-        console.error('Error setting form data from pujaData:', error);
+        console.error('Error setting form data:', error);
       }
     }
   }, [pujaData, isVisible, form]);
 
-  // Dropzone for Puja Images with enhanced safety
   const { getRootProps: getPujaRootProps, getInputProps: getPujaInputProps } = useDropzone({
     accept: { 'image/*': [] },
     multiple: true,
     maxFiles: 6,
-    maxSize: 10 * 1024 * 1024, // 10MB per file
+    maxSize: 10 * 1024 * 1024,
     onDrop: (acceptedFiles, rejectedFiles) => {
       try {
-        // Handle rejected files
         if (rejectedFiles.length > 0) {
           rejectedFiles.forEach(({ file, errors }) => {
             errors.forEach(error => {
@@ -219,7 +290,6 @@ const UpdatePujaModal: React.FC<UpdatePujaModalProps> = ({
           });
         }
         
-        // Handle accepted files
         if (Array.isArray(acceptedFiles) && acceptedFiles.length > 0) {
           const validFiles = acceptedFiles.filter(file => file && file instanceof File);
           
@@ -238,14 +308,12 @@ const UpdatePujaModal: React.FC<UpdatePujaModalProps> = ({
     },
   });
 
-  // Dropzone for Temple Image with enhanced safety
   const { getRootProps: getTempleRootProps, getInputProps: getTempleInputProps } = useDropzone({
     accept: { 'image/*': [] },
     multiple: false,
-    maxSize: 10 * 1024 * 1024, // 10MB
+    maxSize: 10 * 1024 * 1024,
     onDrop: (acceptedFiles, rejectedFiles) => {
       try {
-        // Handle rejected files
         if (rejectedFiles.length > 0) {
           rejectedFiles.forEach(({ file, errors }) => {
             errors.forEach(error => {
@@ -258,7 +326,6 @@ const UpdatePujaModal: React.FC<UpdatePujaModalProps> = ({
           });
         }
         
-        // Handle accepted files
         if (Array.isArray(acceptedFiles) && acceptedFiles.length > 0 && acceptedFiles[0]) {
           const fileName = acceptedFiles[0]?.name?.toString()?.trim() || '';
           handleInputChange('templeImage', fileName);
@@ -277,17 +344,49 @@ const UpdatePujaModal: React.FC<UpdatePujaModalProps> = ({
           return prev;
         }
         
-        // Safe value handling based on field type
-        let safeValue;
+        let safeValue: any;
         switch (field) {
+          case 'images':
           case 'pujaImages':
-            safeValue = Array.isArray(value) ? value.filter(v => v instanceof File) : [];
+            safeValue = Array.isArray(value) ? value : [];
             break;
           case 'benefits':
             safeValue = Array.isArray(value) ? value : [];
             break;
           case 'selectedPlanIds':
-            safeValue = Array.isArray(value) ? value.filter(v => v != null).map(v => v.toString()) : [];
+            safeValue = Array.isArray(value) 
+              ? value.filter(v => v != null).map((v: string) => parseInt(v, 10)).filter(id => !isNaN(id))
+              : [];
+            break;
+          case 'category':
+            console.log('Handling category input change:', { value, typeof: typeof value });
+            // Handle both array values and comma-separated strings
+            let categoryValue: string[] = [];
+            if (Array.isArray(value)) {
+              console.log('Category value is array:', value);
+              // First, join all elements and remove curly braces to handle malformed data
+              let joinedValue = value.join(',').replace(/[{}]/g, '');
+              // Then split by comma to get individual categories
+              categoryValue = joinedValue
+                .split(',')
+                .map((v: string) => v.trim())
+                .filter((v: string) => v.length > 0);
+              // Remove duplicates
+              categoryValue = Array.from(new Set(categoryValue));
+            } else if (typeof value === 'string') {
+              console.log('Category value is string:', value);
+              // If it's a comma-separated string, split it
+              let cleanValue = value.replace(/[{}]/g, '');
+              categoryValue = cleanValue
+                .split(',')
+                .map((v: string) => v.trim())
+                .filter((v: string) => v.length > 0);
+            } else {
+              console.log('Category value is other:', value);
+              categoryValue = ['general'];
+            }
+            safeValue = categoryValue;
+            console.log('Processed category safeValue:', safeValue);
             break;
           case 'prasadPrice':
             const numValue = Number(value);
@@ -316,7 +415,7 @@ const UpdatePujaModal: React.FC<UpdatePujaModalProps> = ({
 
   const handleBenefitChange = (index: number, field: keyof Benefit, value: string) => {
     try {
-      const safeIndex = Math.max(0, Math.min(index, 3)); // Ensure index is between 0-3
+      const safeIndex = Math.max(0, Math.min(index, 3));
       const safeValue = (value ?? '').toString().trim();
       
       setFormData((prev) => {
@@ -332,7 +431,6 @@ const UpdatePujaModal: React.FC<UpdatePujaModalProps> = ({
           { title: '', description: '' },
         ];
         
-        // Ensure the benefit at index exists
         if (!currentBenefits[safeIndex] || typeof currentBenefits[safeIndex] !== 'object') {
           currentBenefits[safeIndex] = { title: '', description: '' };
         }
@@ -349,28 +447,46 @@ const UpdatePujaModal: React.FC<UpdatePujaModalProps> = ({
     }
   };
 
-  // Function to create object URL for image preview
+  // ✅ PERFECT: UPDATE formData.images ONLY!
+  const handleDeleteExistingImage = async (imageId: number) => {
+  try {
+    console.log(`🗑️ Deleting image ${imageId} from SERVER`);
+    const result = await dispatch(deletePujaImage({ pujaId: safePujaId, imageId }));
+    
+    if (deletePujaImage.fulfilled.match(result)) {
+      console.log("check hii")
+      console.log(`✅ Image ${imageId} DELETED FROM SERVER`);
+      
+      setFormData((prev) => {
+        if (prev.images && Array.isArray(prev.images)) {
+          const updatedImages = prev.images.filter((image: any) => image.id !== imageId);
+          console.log(`✅ formData.images updated: ${updatedImages} IMAGES LEFT`,updatedImages);
+          return { ...prev, images: updatedImages };
+        }
+        return prev;
+      });
+    }
+  } catch (error) {
+    console.error(`❌ Error deleting image ${imageId}:`, error);
+  }
+};
+
   const createImagePreviewUrl = (file: File): string => {
     return URL.createObjectURL(file);
   };
 
-  // Function to revoke object URL to prevent memory leaks
   const revokeImagePreviewUrl = (url: string): void => {
     URL.revokeObjectURL(url);
   };
 
-  // Clean up object URLs when component unmounts or when images change
   useEffect(() => {
     return () => {
-      // Clean up any existing object URLs
       if (formData.pujaImages && Array.isArray(formData.pujaImages)) {
         formData.pujaImages.forEach(file => {
           if (file instanceof File) {
             try {
               revokeImagePreviewUrl(URL.createObjectURL(file));
-            } catch (e) {
-              // Ignore errors during cleanup
-            }
+            } catch (e) {}
           }
         });
       }
@@ -379,8 +495,6 @@ const UpdatePujaModal: React.FC<UpdatePujaModalProps> = ({
 
   const handleSubmit = async () => {
     console.log("UpdatePujaModal - handleSubmit called");
-    console.log("Images changed:", imagesChanged);
-    console.log("Form data images:", formData.pujaImages);
     
     try {
       if (!safePujaId) {
@@ -388,52 +502,51 @@ const UpdatePujaModal: React.FC<UpdatePujaModalProps> = ({
         return;
       }
       
-      if (!formData || typeof formData !== 'object') {
-        console.error('Form data is invalid:', formData);
-        return;
-      }
+      const benefitsToUpdate = (formData.benefits ?? [])
+        .filter(benefit => 
+          (benefit?.title ?? '').trim() !== '' && 
+          (benefit?.description ?? '').trim() !== ''
+        )
+        .map(benefit => ({
+          benefit_title: (benefit?.title ?? '').trim(),
+          benefit_description: (benefit?.description ?? '').trim()
+        }));
+
+      // Send category as array directly, like in createPuja
+      console.log('Formatting category for API. Current formData.category:', formData.category);
+      const categoryArray = Array.isArray(formData.category) 
+        ? formData.category 
+        : (formData.category ?? 'general').toString().split(',').map((cat: string) => cat.trim()).filter((cat: string) => cat.length > 0);
+      console.log('Formatted categoryArray for API:', categoryArray);
       
       const requestData = {
-        name: (formData.pujaName ?? '').toString().trim(),
-        sub_heading: (formData.subHeading ?? '').toString().trim(),
-        description: (formData.about ?? '').toString().trim(),
+        name: (formData.pujaName ?? '').trim(),
+        sub_heading: (formData.subHeading ?? '').trim(),
+        description: (formData.about ?? '').trim(),
         date: null,
         time: null,
-        temple_image_url: (formData.templeImage ?? '').toString().trim(),
-        temple_address: (formData.templeAddress ?? '').toString().trim(),
-        temple_description: (formData.templeDescription ?? '').toString().trim(),
-        prasad_price: (() => {
-          const price = formData.prasadPrice;
-          if (price === null || price === undefined) return 0;
-          const numPrice = Number(price);
-          return isNaN(numPrice) ? 0 : Math.max(0, numPrice);
-        })(),
+        temple_image_url: (formData.templeImage ?? '').trim(),
+        temple_address: (formData.templeAddress ?? '').trim(),
+        temple_description: (formData.templeDescription ?? '').trim(),
+        benefits: benefitsToUpdate,
+        prasad_price: Number(formData.prasadPrice ?? 0),
         is_prasad_active: Boolean(formData.prasadStatus ?? false),
-        dakshina_prices_inr: (formData.dakshinaPrices ?? '').toString().trim(),
-        dakshina_prices_usd: (formData.dakshinaPricesUSD ?? '').toString().trim(),
+        dakshina_prices_inr: (formData.dakshinaPrices ?? '').trim(),
+        dakshina_prices_usd: (formData.dakshinaPricesUSD ?? '').trim(),
         is_dakshina_active: Boolean(formData.dakshinaStatus ?? false),
-        manokamna_prices_inr: (formData.manokamnaPrices ?? '').toString().trim(),
-        manokamna_prices_usd: (formData.manokamnaPricesUSD ?? '').toString().trim(),
+        manokamna_prices_inr: (formData.manokamnaPrices ?? '').trim(),
+        manokamna_prices_usd: (formData.manokamnaPricesUSD ?? '').trim(),
         is_manokamna_active: Boolean(formData.manokamnaStatus ?? false),
-        category: (formData.category ?? 'general').toString().trim(),
+        category: categoryArray,
+        selected_plan_ids: formData.selectedPlanIds ?? [],
         is_active: Boolean(formData.isActive ?? true),
         is_featured: Boolean(formData.isFeatured ?? false),
-        benefits: Array.isArray(formData.benefits) 
-          ? formData.benefits.map(benefit => ({
-              title: (benefit?.title ?? '').toString().trim(),
-              description: (benefit?.description ?? '').toString().trim()
-            }))
-          : [],
-        selected_plan_ids: Array.isArray(formData.selectedPlanIds) 
-          ? formData.selectedPlanIds.filter(id => id != null).map(id => id.toString())
-          : [],
       } as any;
       
-      console.log("Calling updatePuja with:", requestData);
-      const updateResult = await dispatch(updatePuja({ id: safePujaId, ...requestData }));
-      console.log("Update result:", updateResult);
+      console.log("✅ Calling updatePuja with:", requestData);
       
-      // Only upload images if they were changed and are valid
+      const updateResult = await dispatch(updatePuja({ id: safePujaId, ...requestData }));
+      
       if (updatePuja.fulfilled.match(updateResult) && 
           imagesChanged && 
           Array.isArray(formData.pujaImages) && 
@@ -456,7 +569,6 @@ const UpdatePujaModal: React.FC<UpdatePujaModalProps> = ({
     }
   };
 
-  // Early return if not visible
   if (!isVisible) {
     return null;
   }
@@ -487,11 +599,7 @@ const UpdatePujaModal: React.FC<UpdatePujaModalProps> = ({
 
             <Row gutter={16}>
               <Col span={12}>
-                <Form.Item
-                  name="pujaName"
-                  label={<span className="block text-sm font-medium text-gray-700 mb-2">Puja Name</span>}
-                  required={true}
-                >
+                <Form.Item name="pujaName" label={<span className="block text-sm font-medium text-gray-700 mb-2">Puja Name</span>} required={true}>
                   <Input
                     value={(formData.pujaName ?? '').toString()}
                     onChange={(e) => handleInputChange('pujaName', e?.target?.value ?? '')}
@@ -502,11 +610,7 @@ const UpdatePujaModal: React.FC<UpdatePujaModalProps> = ({
               </Col>
 
               <Col span={12}>
-                <Form.Item
-                  name="subHeading"
-                  label={<span className="block text-sm font-medium text-gray-700 mb-2">Sub Heading</span>}
-                  required={true}
-                >
+                <Form.Item name="subHeading" label={<span className="block text-sm font-medium text-gray-700 mb-2">Sub Heading</span>} required={true}>
                   <Input
                     value={(formData.subHeading ?? '').toString()}
                     onChange={(e) => handleInputChange('subHeading', e?.target?.value ?? '')}
@@ -517,10 +621,7 @@ const UpdatePujaModal: React.FC<UpdatePujaModalProps> = ({
               </Col>
             </Row>
 
-            <Form.Item
-              name="about"
-              label={<span className="block text-sm font-medium text-gray-700 mb-2">About Puja</span>}
-            >
+            <Form.Item name="about" label={<span className="block text-sm font-medium text-gray-700 mb-2">About Puja</span>}>
               <Input.TextArea
                 value={(formData.about ?? '').toString()}
                 onChange={(e) => handleInputChange('about', e?.target?.value ?? '')}
@@ -530,42 +631,13 @@ const UpdatePujaModal: React.FC<UpdatePujaModalProps> = ({
               />
             </Form.Item>
 
-            {/* <Form.Item
-              name="about"
-              label={<span className="block text-sm font-medium text-gray-700 mb-2">About Puja</span>}
-            >
-              <Input.TextArea
-                value={formData.about ?? ''}
-                onChange={(e) => handleInputChange('about', e.target.value ?? '')}
-                rows={4}
-                placeholder="Enter detailed description about the puja"
-                className="w-full px-4 py-3 border border-orange-200 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent text-black placeholder-gray-400"
-              />
-            </Form.Item> */}
-
-            <Form.Item
-              name="pujaImages"
-              label={<span className="block text-sm font-medium text-gray-700 mb-2">Puja Images (Max 6)</span>}
-            >
-              <div
-                {...getPujaRootProps()}
-                className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer transition-colors duration-200 border-orange-300 bg-orange-50 hover:bg-orange-100"
-              >
-
+            {/* IMAGES SECTION */}
+            <Form.Item name="pujaImages" label={<span className="block text-sm font-medium text-gray-700 mb-2">Puja Images (Max 6)</span>}>
+              <div {...getPujaRootProps()} className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer transition-colors duration-200 border-orange-300 bg-orange-50 hover:bg-orange-100">
                 <input {...getPujaInputProps()} />
                 <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                  <svg
-                    className="w-8 h-8 mb-2 text-orange-400"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
-                    />
+                  <svg className="w-8 h-8 mb-2 text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
                   </svg>
                   <p className="mb-1 text-sm font-medium text-orange-600">
                     {(formData.pujaImages && Array.isArray(formData.pujaImages) && formData.pujaImages.length > 0) 
@@ -579,19 +651,16 @@ const UpdatePujaModal: React.FC<UpdatePujaModalProps> = ({
                 </div>
               </div>
               
-              {/* Display selected new images preview */}
+              {/* New Images Preview */}
               {formData.pujaImages && Array.isArray(formData.pujaImages) && formData.pujaImages.length > 0 && (
                 <div className="mt-4">
                   <h4 className="text-sm font-medium text-gray-700 mb-2">New Images to Upload:</h4>
                   <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                     {formData.pujaImages.map((file, index) => {
-                      // Create preview URL for the image
                       let previewUrl = '';
                       try {
                         previewUrl = createImagePreviewUrl(file);
-                      } catch (e) {
-                        // If we can't create a preview, we'll show the file icon
-                      }
+                      } catch (e) {}
                       
                       return (
                         <div key={index} className="relative bg-white p-3 rounded-lg border border-orange-200">
@@ -602,12 +671,8 @@ const UpdatePujaModal: React.FC<UpdatePujaModalProps> = ({
                                 alt={`Preview ${index + 1}`} 
                                 className="w-full h-full object-cover"
                                 onError={(e) => {
-                                  // If image fails to load, revoke the URL and show file icon
                                   revokeImagePreviewUrl(previewUrl);
                                   e.currentTarget.style.display = 'none';
-                                  if (e.currentTarget.nextElementSibling) {
-                                    (e.currentTarget.nextElementSibling as HTMLElement).style.display = 'flex';
-                                  }
                                 }}
                               />
                               <div 
@@ -638,10 +703,7 @@ const UpdatePujaModal: React.FC<UpdatePujaModalProps> = ({
                             <button
                               type="button"
                               onClick={() => {
-                                // Revoke the URL if it exists
-                                if (previewUrl) {
-                                  revokeImagePreviewUrl(previewUrl);
-                                }
+                                if (previewUrl) revokeImagePreviewUrl(previewUrl);
                                 if (formData.pujaImages && Array.isArray(formData.pujaImages)) {
                                   const updatedImages = formData.pujaImages.filter((_, i) => i !== index);
                                   handleInputChange('pujaImages', updatedImages);
@@ -665,65 +727,56 @@ const UpdatePujaModal: React.FC<UpdatePujaModalProps> = ({
                 </div>
               )}
               
-              {/* Show existing images info */}
-              {pujaData && (pujaData.images || pujaData.puja_images) && (
+              {/* ✅ EXISTING IMAGES FROM formData.images */}
+              {formData.images && Array.isArray(formData.images) && formData.images.length > 0 && (
                 <div className="mt-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
-                  <h4 className="text-sm font-medium text-blue-700 mb-2">Current Images:</h4>
+                  <h4 className="text-sm font-medium text-blue-700 mb-2">Current Images ({formData.images.length}):</h4>
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                    {/* Show images from API response if available */}
-                    {pujaData.images && Array.isArray(pujaData.images) && pujaData.images.length > 0 ? (
-                      pujaData.images.map((image: any, index: number) => (
-                        <div key={image.id || index} className="bg-white p-2 rounded border border-blue-200">
-                          {image.image_url ? (
-                            <div className="relative w-full h-16 rounded overflow-hidden">
-                              <img 
-                                src={`https://api.33kotidham.in/${image.image_url}`} 
-                                alt={`Current image ${index + 1}`}
-                                className="w-full h-full object-cover"
-                                onError={(e) => {
-                                  e.currentTarget.style.display = 'none';
-                                  if (e.currentTarget.parentElement) {
-                                    e.currentTarget.parentElement.innerHTML = '<div class="w-full h-full bg-blue-100 flex items-center justify-center"><svg class="w-4 h-4 text-blue-500" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clipRule="evenodd" /></svg></div>';
-                                  }
-                                }}
-                              />
-                            </div>
-                          ) : (
-                            <div className="flex items-center gap-1">
-                              <svg className="w-3 h-3 text-blue-500" fill="currentColor" viewBox="0 0 20 20">
-                                <path fillRule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clipRule="evenodd" />
-                              </svg>
-                              <span className="text-xs text-blue-600">Image {index + 1}</span>
-                            </div>
-                          )}
-                        </div>
-                      ))
-                    ) : pujaData.puja_images && Array.isArray(pujaData.puja_images) && pujaData.puja_images.length > 0 ? (
-                      // Fallback to puja_images if images is not available
-                      pujaData.puja_images.map((imageUrl: string, index: number) => (
-                        <div key={index} className="bg-white p-2 rounded border border-blue-200">
-                          <div className="flex items-center gap-1">
-                            <svg className="w-3 h-3 text-blue-500" fill="currentColor" viewBox="0 0 20 20">
-                              <path fillRule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clipRule="evenodd" />
-                            </svg>
+                    {formData.images.map((image: any, index: number) => (
+                      <div key={image.id || index} className="relative bg-white p-2 rounded border border-blue-200">
+                        {image.image_url ? (
+                          <div className="relative w-full h-16 rounded overflow-hidden">
+                            <img 
+                              src={`https://api.33kotidham.in/${image.image_url}`} 
+                              alt={`Current image ${index + 1}`}
+                              className="w-full h-full object-cover"
+                              onError={(e) => {
+                                e.currentTarget.style.display = 'none';
+                                if (e.currentTarget.parentElement) {
+                                  e.currentTarget.parentElement.innerHTML = '<div class="w-full h-full bg-blue-100 flex items-center justify-center"><svg class="w-4 h-4 text-blue-500" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clipRule="evenodd" /></svg></div>';
+                                }
+                              }}
+                            />
+                            {/* <button
+                              type="button"
+                              onClick={() => {
+                                if (window.confirm(`Delete this image?`)) {
+                                  handleDeleteExistingImage(image.id);
+                                }
+                              }}
+                              className="absolute top-1 right-1 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center text-xs font-bold hover:bg-red-600 transition-colors"
+                              title="Delete Image"
+                            >
+                              ✕
+                            </button> */}
+                          </div>
+                        ) : (
+                          <div className="flex items-center justify-center w-full h-16 bg-blue-100 rounded">
                             <span className="text-xs text-blue-600">Image {index + 1}</span>
                           </div>
-                        </div>
-                      ))
-                    ) : (
-                      <div className="col-span-full text-center text-xs text-blue-600">
-                        No images available
+                        )}
                       </div>
-                    )}
+                    ))}
                   </div>
                   <p className="text-xs text-blue-600 mt-2">
-                    {imagesChanged ? 'These will be replaced with new images when saved' : 'Upload new images to replace these'}
+                    {imagesChanged ? 'These will be replaced with new images when saved' : 'Click ✕ to delete individual images'}
                   </p>
                 </div>
               )}
             </Form.Item>
           </div>
 
+          {/* ✅ ALL OTHER SECTIONS SAME - COPY FROM PREVIOUS */}
           {/* Section 2: Temple Details */}
           <div className="bg-gradient-to-r from-indigo-50 to-indigo-100 p-6 rounded-xl border border-indigo-200 mb-6">
             <h3 className="text-lg font-semibold text-indigo-800 mb-4 font-['Philosopher'] flex items-center gap-2">
@@ -732,28 +785,12 @@ const UpdatePujaModal: React.FC<UpdatePujaModalProps> = ({
             </h3>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <Form.Item
-                name="templeImage"
-                label={<span className="block text-sm font-medium text-gray-700 mb-2">Temple Image</span>}
-              >
-                <div
-                  {...getTempleRootProps()}
-                  className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer bg-indigo-50 hover:bg-indigo-100 transition-colors duration-200 border-indigo-300"
-                >
+              <Form.Item name="templeImage" label={<span className="block text-sm font-medium text-gray-700 mb-2">Temple Image</span>}>
+                <div {...getTempleRootProps()} className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer bg-indigo-50 hover:bg-indigo-100 transition-colors duration-200 border-indigo-300">
                   <input {...getTempleInputProps()} />
                   <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                    <svg
-                      className="w-8 h-8 mb-2 text-indigo-400"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
-                      />
+                    <svg className="w-8 h-8 mb-2 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
                     </svg>
                     <p className="mb-1 text-sm text-indigo-600 font-medium">
                       {(formData.templeImage && formData.templeImage.toString().trim()) 
@@ -764,7 +801,6 @@ const UpdatePujaModal: React.FC<UpdatePujaModalProps> = ({
                   </div>
                 </div>
                 
-                {/* Display selected temple image with remove option */}
                 {formData.templeImage && formData.templeImage.toString().trim() && (
                   <div className="mt-4">
                     <div className="bg-white p-3 rounded-lg border border-indigo-200">
@@ -786,10 +822,7 @@ const UpdatePujaModal: React.FC<UpdatePujaModalProps> = ({
                 )}
               </Form.Item>
 
-              <Form.Item
-                name="templeAddress"
-                label={<span className="block text-sm font-medium text-gray-700 mb-2">Temple Address</span>}
-              >
+              <Form.Item name="templeAddress" label={<span className="block text-sm font-medium text-gray-700 mb-2">Temple Address</span>}>
                 <Input
                   value={(formData.templeAddress ?? '').toString()}
                   onChange={(e) => handleInputChange('templeAddress', e?.target?.value ?? '')}
@@ -799,10 +832,7 @@ const UpdatePujaModal: React.FC<UpdatePujaModalProps> = ({
               </Form.Item>
             </div>
 
-            <Form.Item
-              name="templeDescription"
-              label={<span className="block text-sm font-medium text-gray-700 mb-2">Temple Description</span>}
-            >
+            <Form.Item name="templeDescription" label={<span className="block text-sm font-medium text-gray-700 mb-2">Temple Description</span>}>
               <Input.TextArea
                 value={(formData.templeDescription ?? '').toString()}
                 onChange={(e) => handleInputChange('templeDescription', e?.target?.value ?? '')}
@@ -813,6 +843,9 @@ const UpdatePujaModal: React.FC<UpdatePujaModalProps> = ({
             </Form.Item>
           </div>
 
+          {/* Sections 3-8: SAME AS BEFORE - COPY FROM PREVIOUS FULL CODE */}
+          {/* ... (Benefits, Plans, Prasad, Dakshina, Manokamna, Settings) ... */}
+          
           {/* Section 3: Puja Benefits */}
           <div className="bg-gradient-to-r from-green-50 to-green-100 p-6 rounded-xl border border-green-200 mb-6">
             <h3 className="text-lg font-semibold text-green-800 mb-4 font-['Philosopher'] flex items-center gap-2">
@@ -826,10 +859,7 @@ const UpdatePujaModal: React.FC<UpdatePujaModalProps> = ({
                 return (
                 <div key={index} className="bg-white p-4 rounded-lg border border-green-200">
                   <h4 className="font-medium text-green-700 mb-3">Benefit {index + 1}</h4>
-                  <Form.Item
-                    name={['benefits', index, 'title']}
-                    label={<span className="block text-sm font-medium text-gray-700 mb-2">Title</span>}
-                  >
+                  <Form.Item name={['benefits', index, 'title']} label={<span className="block text-sm font-medium text-gray-700 mb-2">Title</span>}>
                     <Input
                       value={(safeBenefit?.title ?? '').toString()}
                       onChange={(e) => handleBenefitChange(index, 'title', e?.target?.value ?? '')}
@@ -838,10 +868,7 @@ const UpdatePujaModal: React.FC<UpdatePujaModalProps> = ({
                     />
                   </Form.Item>
 
-                  <Form.Item
-                    name={['benefits', index, 'description']}
-                    label={<span className="block text-sm font-medium text-gray-700 mb-2">Description</span>}
-                  >
+                  <Form.Item name={['benefits', index, 'description']} label={<span className="block text-sm font-medium text-gray-700 mb-2">Description</span>}>
                     <Input.TextArea
                       value={(safeBenefit?.description ?? '').toString()}
                       onChange={(e) => handleBenefitChange(index, 'description', e?.target?.value ?? '')}
@@ -880,15 +907,16 @@ const UpdatePujaModal: React.FC<UpdatePujaModalProps> = ({
                   borderRadius: '0.5rem',
                   border: '1px solid #E9D5FF',
                 }}
+                maxTagCount={3}
               >
                 {plans && plans.length > 0 ? (
                   plans.map((plan) => (
-                    <Option key={plan.id} value={plan.id.toString()}>
+                    <Option key={plan.id} value={plan.id}>
                       {plan.name} - ₹{plan.actual_price}
                     </Option>
                   ))
                 ) : (
-                  <Option disabled value="no-plans">No plans available</Option>
+                  <Option disabled value={0}>No plans available</Option>
                 )}
               </Select>
               <Text className="text-xs text-gray-500 mt-1">Hold Ctrl/Cmd to select multiple plans</Text>
@@ -901,12 +929,8 @@ const UpdatePujaModal: React.FC<UpdatePujaModalProps> = ({
               <span className="text-2xl">🍯</span>
               5. Prasad
             </h3>
-
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
-              <Form.Item
-                name="prasadPrice"
-                label={<span className="block text-sm font-medium text-gray-700 mb-2">Prasad Price (₹)</span>}
-              >
+              <Form.Item name="prasadPrice" label={<span className="block text-sm font-medium text-gray-700 mb-2">Prasad Price (₹)</span>}>
                 <Input
                   type="number"
                   value={(formData.prasadPrice ?? 0).toString()}
@@ -915,7 +939,6 @@ const UpdatePujaModal: React.FC<UpdatePujaModalProps> = ({
                   className="w-full px-4 py-3 border border-yellow-200 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-transparent text-black placeholder-gray-400"
                 />
               </Form.Item>
-
               <Form.Item name="prasadStatus" valuePropName="checked">
                 <Checkbox
                   checked={Boolean(formData.prasadStatus ?? false)}
@@ -934,12 +957,8 @@ const UpdatePujaModal: React.FC<UpdatePujaModalProps> = ({
               <span className="text-2xl">💰</span>
               6. Dakshina
             </h3>
-
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-start">
-              <Form.Item
-                name="dakshinaPrices"
-                label={<span className="block text-sm font-medium text-gray-700 mb-2">Dakshina Prices (₹)</span>}
-              >
+              <Form.Item name="dakshinaPrices" label={<span className="block text-sm font-medium text-gray-700 mb-2">Dakshina Prices (₹)</span>}>
                 <Input
                   value={(formData.dakshinaPrices ?? '').toString()}
                   onChange={(e) => handleInputChange('dakshinaPrices', e?.target?.value ?? '')}
@@ -948,11 +967,7 @@ const UpdatePujaModal: React.FC<UpdatePujaModalProps> = ({
                 />
                 <Text className="text-xs text-gray-500 mt-1">Enter comma-separated values for multiple price options</Text>
               </Form.Item>
-
-              <Form.Item
-                name="dakshinaPricesUSD"
-                label={<span className="block text-sm font-medium text-gray-700 mb-2">Dakshina Prices (USD)</span>}
-              >
+              <Form.Item name="dakshinaPricesUSD" label={<span className="block text-sm font-medium text-gray-700 mb-2">Dakshina Prices (USD)</span>}>
                 <Input
                   value={(formData.dakshinaPricesUSD ?? '').toString()}
                   onChange={(e) => handleInputChange('dakshinaPricesUSD', e?.target?.value ?? '')}
@@ -961,7 +976,6 @@ const UpdatePujaModal: React.FC<UpdatePujaModalProps> = ({
                 />
                 <Text className="text-xs text-gray-500 mt-1">Optional: Manual USD pricing (comma-separated)</Text>
               </Form.Item>
-
               <Form.Item name="dakshinaStatus" valuePropName="checked">
                 <Checkbox
                   checked={Boolean(formData.dakshinaStatus ?? false)}
@@ -972,7 +986,6 @@ const UpdatePujaModal: React.FC<UpdatePujaModalProps> = ({
                 </Checkbox>
               </Form.Item>
             </div>
-
             <div className="mt-4 p-3 bg-white rounded-lg border border-red-200">
               <Text className="text-sm text-gray-600">
                 <span className="font-medium">Note: </span>
@@ -987,12 +1000,8 @@ const UpdatePujaModal: React.FC<UpdatePujaModalProps> = ({
               <span className="text-2xl">📜</span>
               7. Manokamna Parchi
             </h3>
-
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-start">
-              <Form.Item
-                name="manokamnaPrices"
-                label={<span className="block text-sm font-medium text-gray-700 mb-2">Manokamna Prices (₹)</span>}
-              >
+              <Form.Item name="manokamnaPrices" label={<span className="block text-sm font-medium text-gray-700 mb-2">Manokamna Prices (₹)</span>}>
                 <Input
                   value={(formData.manokamnaPrices ?? '').toString()}
                   onChange={(e) => handleInputChange('manokamnaPrices', e?.target?.value ?? '')}
@@ -1001,11 +1010,7 @@ const UpdatePujaModal: React.FC<UpdatePujaModalProps> = ({
                 />
                 <Text className="text-xs text-gray-500 mt-1">Enter comma-separated values for multiple price options</Text>
               </Form.Item>
-
-              <Form.Item
-                name="manokamnaPricesUSD"
-                label={<span className="block text-sm font-medium text-gray-700 mb-2">Manokamna Prices (USD)</span>}
-              >
+              <Form.Item name="manokamnaPricesUSD" label={<span className="block text-sm font-medium text-gray-700 mb-2">Manokamna Prices (USD)</span>}>
                 <Input
                   value={(formData.manokamnaPricesUSD ?? '').toString()}
                   onChange={(e) => handleInputChange('manokamnaPricesUSD', e?.target?.value ?? '')}
@@ -1014,7 +1019,6 @@ const UpdatePujaModal: React.FC<UpdatePujaModalProps> = ({
                 />
                 <Text className="text-xs text-gray-500 mt-1">Optional: Manual USD pricing (comma-separated)</Text>
               </Form.Item>
-
               <Form.Item name="manokamnaStatus" valuePropName="checked">
                 <Checkbox
                   checked={Boolean(formData.manokamnaStatus ?? false)}
@@ -1025,19 +1029,17 @@ const UpdatePujaModal: React.FC<UpdatePujaModalProps> = ({
                 </Checkbox>
               </Form.Item>
             </div>
-
             <div className="mt-4 p-3 bg-white rounded-lg border border-pink-200">
               <Text className="text-sm text-gray-600">
                 <span className="font-medium">Note: </span>
                 <span className="text-pink-600">
-                  Manokamna Parchi allows devotees to write their wishes and prayers. No automatic conversion - you can
-                  manually set both INR and USD prices
+                  Manokamna Parchi allows devotees to write their wishes and prayers. No automatic conversion - you can manually set both INR and USD prices
                 </span>
               </Text>
             </div>
           </div>
 
-          {/* General Settings */}
+          {/* Section 8: General Settings */}
           <div className="bg-gradient-to-r from-gray-50 to-gray-100 p-6 rounded-xl border border-gray-200 mb-6">
             <h3 className="text-lg font-semibold text-gray-800 mb-4 font-['Philosopher'] flex items-center gap-2">
               <span className="text-2xl">⚙️</span>
@@ -1047,11 +1049,13 @@ const UpdatePujaModal: React.FC<UpdatePujaModalProps> = ({
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <Form.Item
                 name="category"
-                label={<span className="block text-sm font-medium text-gray-700 mb-2">Category</span>}
+                label={<span className="block text-sm font-medium text-gray-700 mb-2">Categories (Multiple Selection)</span>}
               >
                 <Select
-                  value={(formData.category ?? 'general').toString()}
-                  onChange={(value) => handleInputChange('category', value ?? 'general')}
+                  mode="multiple"
+                  value={Array.isArray(formData.category) ? formData.category : ['general']}
+                  onChange={(value) => handleInputChange('category', Array.isArray(value) ? value : ['general'])}
+                  placeholder="Select categories"
                   className="w-full"
                   dropdownClassName="border border-gray-200 rounded-lg"
                   style={{
@@ -1059,6 +1063,8 @@ const UpdatePujaModal: React.FC<UpdatePujaModalProps> = ({
                     borderRadius: '0.5rem',
                     border: '1px solid #E5E7EB',
                   }}
+                  maxTagCount={3}
+                  maxTagTextLength={10}
                 >
                   <Option value="general">General</Option>
                   <Option value="prosperity">Prosperity</Option>
@@ -1067,6 +1073,9 @@ const UpdatePujaModal: React.FC<UpdatePujaModalProps> = ({
                   <Option value="marriage">Marriage</Option>
                   <Option value="spiritual">Spiritual</Option>
                 </Select>
+                <Text className="text-xs text-gray-500 mt-1">
+                  Hold Ctrl/Cmd to select multiple categories
+                </Text>
               </Form.Item>
 
               <div className="flex items-center gap-6 mt-8">

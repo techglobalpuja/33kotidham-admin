@@ -3,23 +3,8 @@
 import React from 'react';
 import { Modal, Descriptions, Tag, Image } from 'antd';
 import dayjs from 'dayjs';
-
-interface Blog {
-  id: number;
-  title: string;
-  subtitle: string;
-  content: string;
-  thumbnail_image: string;
-  meta_description: string;
-  tags: string;
-  category_id: number;
-  is_featured: boolean;
-  is_active: boolean;
-  publish_time: string;
-  slug: string;
-  created_at?: string;
-  updated_at?: string;
-}
+import { useCategories } from '@/hooks/useCategories';
+import { Blog } from '@/types'; // Import Blog interface from types
 
 interface ViewBlogModalProps {
   isOpen: boolean;
@@ -28,9 +13,29 @@ interface ViewBlogModalProps {
 }
 
 const ViewBlogModal: React.FC<ViewBlogModalProps> = ({ isOpen, onClose, blog }) => {
+  const { categories } = useCategories();
+  
   if (!blog) return null;
 
   const tagArray = blog.tags ? blog.tags.split(',').map(tag => tag.trim()) : [];
+  
+  // Handle different API response formats for categories
+  const displayCategoryNames = () => {
+    // Check if blog has categories array with full category objects
+    if (Array.isArray((blog as any).categories)) {
+      return (blog as any).categories.map((category: any) => category.name).join(', ');
+    }
+    
+    // Check if blog has category_ids array and we have categories from Redux
+    if (Array.isArray(blog.category_ids) && categories) {
+      return blog.category_ids.map(id => {
+        const category = categories.find(cat => cat.id === id);
+        return category ? category.name : 'Unknown';
+      }).join(', ');
+    }
+    
+    return 'N/A';
+  };
 
   return (
     <Modal
@@ -66,7 +71,8 @@ const ViewBlogModal: React.FC<ViewBlogModalProps> = ({ isOpen, onClose, blog }) 
           <div className="bg-white p-4 rounded-lg border border-gray-200">
             <h4 className="text-md font-semibold text-gray-800 mb-3">Thumbnail</h4>
             <Image
-              src={blog.thumbnail_image}
+              src={`https://api.33kotidham.in/${blog.thumbnail_image}`} 
+              
               alt={blog.title}
               className="rounded-lg"
               style={{ maxHeight: '300px', objectFit: 'cover' }}
@@ -104,8 +110,8 @@ const ViewBlogModal: React.FC<ViewBlogModalProps> = ({ isOpen, onClose, blog }) 
                 )}
               </div>
             </Descriptions.Item>
-            <Descriptions.Item label="Category ID">
-              {blog.category_id || 'N/A'}
+            <Descriptions.Item label="Categories">
+              {displayCategoryNames()}
             </Descriptions.Item>
           </Descriptions>
         </div>

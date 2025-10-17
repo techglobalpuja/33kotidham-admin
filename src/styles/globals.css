@@ -99,6 +99,35 @@ body {
   padding: 1rem 1.5rem;
 }
 
+/* Custom styles for Blog Editor */
+.blog-editor {
+  min-height: 300px;
+}
+
+.blog-editor .ql-toolbar.ql-snow {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: white;
+  border-bottom: 1px solid #e5e5e5;
+  border-top-left-radius: 0.5rem;
+  border-top-right-radius: 0.5rem;
+}
+
+.blog-editor .ql-container.ql-snow {
+  min-height: 300px;
+  height: auto;
+  border-bottom-left-radius: 0.5rem;
+  border-bottom-right-radius: 0.5rem;
+}
+
+.blog-editor .ql-editor {
+  min-height: 300px;
+  height: auto;
+  overflow: visible;
+  padding: 20px;
+}
+
 @layer utilities {
   .text-balance {
     text-wrap: balance;

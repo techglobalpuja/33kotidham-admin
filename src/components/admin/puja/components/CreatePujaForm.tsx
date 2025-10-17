@@ -22,11 +22,11 @@ interface PujaFormData {
   subHeading: string;
   about: string;
   pujaImages: File[];
-  templeImage: File | null; // Changed from string to File | null for proper file handling
+  templeImage: File | null;
   templeAddress: string;
   templeDescription: string;
   benefits: Benefit[];
-  selectedPlanIds: string[];
+  selectedPlanIds: number[]; // ✅ CHANGED: number[] instead of string[]
   prasadPrice: number;
   prasadStatus: boolean;
   dakshinaPrices: string;
@@ -35,7 +35,7 @@ interface PujaFormData {
   manokamnaPrices: string;
   manokamnaPricesUSD: string;
   manokamnaStatus: boolean;
-  category: string;
+  category: string[]; // ✅ Multi-select categories
   isActive: boolean;
   isFeatured: boolean;
 }
@@ -49,19 +49,18 @@ const CreatePujaForm: React.FC<CreatePujaFormProps> = ({ onSuccess }) => {
   const dispatch = useDispatch<AppDispatch>();
   const [form] = Form.useForm();
   
-  // Get plans from Redux store
   const { plans, isLoading: plansLoading } = useSelector((state: RootState) => state.plan);
   
-  // Fetch plans when component mounts
   useEffect(() => {
     dispatch(fetchPlans());
   }, [dispatch]);
+
   const [formData, setFormData] = useState<PujaFormData>({
     pujaName: '',
     subHeading: '',
     about: '',
     pujaImages: [],
-    templeImage: null, // Changed from '' to null for File | null type
+    templeImage: null,
     templeAddress: '',
     templeDescription: '',
     benefits: [
@@ -70,7 +69,7 @@ const CreatePujaForm: React.FC<CreatePujaFormProps> = ({ onSuccess }) => {
       { title: '', description: '' },
       { title: '', description: '' },
     ],
-    selectedPlanIds: [],
+    selectedPlanIds: [], // ✅ CHANGED: number[] empty array
     prasadPrice: 0,
     prasadStatus: false,
     dakshinaPrices: '',
@@ -79,7 +78,7 @@ const CreatePujaForm: React.FC<CreatePujaFormProps> = ({ onSuccess }) => {
     manokamnaPrices: '',
     manokamnaPricesUSD: '',
     manokamnaStatus: false,
-    category: 'general',
+    category: ['general'], // ✅ Default multi-select
     isActive: true,
     isFeatured: false,
   });
@@ -89,9 +88,8 @@ const CreatePujaForm: React.FC<CreatePujaFormProps> = ({ onSuccess }) => {
     accept: { 'image/*': [] },
     multiple: true,
     maxFiles: 6,
-    maxSize: 10 * 1024 * 1024, // 10MB per file
+    maxSize: 10 * 1024 * 1024,
     onDrop: (acceptedFiles, rejectedFiles) => {
-      // Handle rejected files
       if (rejectedFiles.length > 0) {
         rejectedFiles.forEach(({ file, errors }) => {
           errors.forEach(error => {
@@ -106,7 +104,6 @@ const CreatePujaForm: React.FC<CreatePujaFormProps> = ({ onSuccess }) => {
         });
       }
       
-      // Handle accepted files
       if (acceptedFiles.length > 0) {
         const currentImages = formData.pujaImages || [];
         const totalImages = currentImages.length + acceptedFiles.length;
@@ -127,9 +124,8 @@ const CreatePujaForm: React.FC<CreatePujaFormProps> = ({ onSuccess }) => {
   const { getRootProps: getTempleRootProps, getInputProps: getTempleInputProps } = useDropzone({
     accept: { 'image/*': [] },
     multiple: false,
-    maxSize: 10 * 1024 * 1024, // 10MB
+    maxSize: 10 * 1024 * 1024,
     onDrop: (acceptedFiles, rejectedFiles) => {
-      // Handle rejected files
       if (rejectedFiles.length > 0) {
         rejectedFiles.forEach(({ file, errors }) => {
           errors.forEach(error => {
@@ -142,19 +138,24 @@ const CreatePujaForm: React.FC<CreatePujaFormProps> = ({ onSuccess }) => {
         });
       }
       
-      // Handle accepted files
       if (acceptedFiles.length > 0 && acceptedFiles[0]) {
         const file = acceptedFiles[0];
-        handleInputChange('templeImage', file); // Store the File object instead of filename
+        handleInputChange('templeImage', file);
       }
     },
   });
 
   const handleInputChange = (field: keyof PujaFormData, value: any) => {
-    setFormData((prev) => ({
-      ...prev,
-      [field]: value ?? '',
-    }));
+    // ✅ SPECIAL HANDLING: Convert plan IDs to numbers
+    if (field === 'selectedPlanIds') {
+      const numericValues = value.map((id: string) => parseInt(id, 10)).filter((id: any) => !isNaN(id));
+      setFormData((prev) => ({ ...prev, [field]: numericValues }));
+    } else {
+      setFormData((prev) => ({
+        ...prev,
+        [field]: value ?? (Array.isArray(value) ? [] : ''),
+      }));
+    }
   };
 
   const handleBenefitChange = (index: number, field: keyof Benefit, value: string) => {
@@ -163,23 +164,17 @@ const CreatePujaForm: React.FC<CreatePujaFormProps> = ({ onSuccess }) => {
     setFormData((prev) => ({ ...prev, benefits: newBenefits }));
   };
 
-  // Function to create object URL for image preview
   const createImagePreviewUrl = (file: File): string => {
     return URL.createObjectURL(file);
   };
 
-  // Function to revoke object URL to prevent memory leaks
   const revokeImagePreviewUrl = (url: string): void => {
     URL.revokeObjectURL(url);
   };
 
-  // Clean up object URLs when component unmounts or when images change
   useEffect(() => {
-    // Store the current preview URLs so we can clean them up later
     const previewUrls: string[] = [];
-    
     return () => {
-      // Clean up any existing object URLs
       if (formData.pujaImages && Array.isArray(formData.pujaImages)) {
         formData.pujaImages.forEach(file => {
           if (file instanceof File) {
@@ -187,9 +182,7 @@ const CreatePujaForm: React.FC<CreatePujaFormProps> = ({ onSuccess }) => {
               const url = createImagePreviewUrl(file);
               previewUrls.push(url);
               revokeImagePreviewUrl(url);
-            } catch (e) {
-              // Ignore errors during cleanup
-            }
+            } catch (e) {}
           }
         });
       }
@@ -198,7 +191,6 @@ const CreatePujaForm: React.FC<CreatePujaFormProps> = ({ onSuccess }) => {
 
   const handleSubmit = async () => {
     try {
-      // Validate required fields
       if (!formData.pujaName?.trim()) {
         console.error('Puja name is required');
         return;
@@ -209,16 +201,14 @@ const CreatePujaForm: React.FC<CreatePujaFormProps> = ({ onSuccess }) => {
         return;
       }
       
-      // Validate images if provided
       if (formData.pujaImages && formData.pujaImages.length > 6) {
         console.error('Maximum 6 images allowed');
         return;
       }
       
-      // Validate image file types and sizes
       if (formData.pujaImages && formData.pujaImages.length > 0) {
         const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
-        const maxSize = 10 * 1024 * 1024; // 10MB
+        const maxSize = 10 * 1024 * 1024;
         
         for (const image of formData.pujaImages) {
           if (!allowedTypes.includes(image.type)) {
@@ -233,7 +223,14 @@ const CreatePujaForm: React.FC<CreatePujaFormProps> = ({ onSuccess }) => {
         }
       }
 
-      // Step 1: Create the puja with basic details
+      const benefitsToAdd = (formData.benefits ?? [])
+        .filter(benefit => benefit.title.trim() !== '' && benefit.description.trim() !== '')
+        .map(benefit => ({
+          benefit_title: benefit.title.trim(),
+          benefit_description: benefit.description.trim()
+        }));
+
+      // ✅ UPDATED: plan_ids as NUMBER array, categories as string array
       const requestData = {
         name: (formData.pujaName ?? '').trim(),
         sub_heading: (formData.subHeading ?? '').trim(),
@@ -243,6 +240,7 @@ const CreatePujaForm: React.FC<CreatePujaFormProps> = ({ onSuccess }) => {
         temple_image_url: formData.templeImage?.name ?? '',
         temple_address: (formData.templeAddress ?? '').trim(),
         temple_description: (formData.templeDescription ?? '').trim(),
+        benefits: benefitsToAdd, 
         prasad_price: formData.prasadPrice ?? 0,
         is_prasad_active: formData.prasadStatus ?? false,
         dakshina_prices_inr: formData.dakshinaPrices ?? '',
@@ -251,7 +249,8 @@ const CreatePujaForm: React.FC<CreatePujaFormProps> = ({ onSuccess }) => {
         manokamna_prices_inr: formData.manokamnaPrices ?? '',
         manokamna_prices_usd: formData.manokamnaPricesUSD ?? '',
         is_manokamna_active: formData.manokamnaStatus ?? false,
-        category: formData.category ?? 'general',
+        category: formData.category ?? ['general'], // ✅ string[] 
+        plan_ids: formData.selectedPlanIds ?? [], // ✅ number[] - [1, 2, 3]
       } as any;
       
       console.log('Creating puja with data:', requestData);
@@ -261,36 +260,6 @@ const CreatePujaForm: React.FC<CreatePujaFormProps> = ({ onSuccess }) => {
         const createdPuja = createResult.payload;
         console.log('Puja created successfully:', createdPuja);
         
-        // Step 2: Add benefits to the created puja
-        // Note: Temporarily commented out due to import issues
-        // const benefitsToAdd = formData.benefits.filter(
-        //   benefit => benefit.title.trim() !== '' && benefit.description.trim() !== ''
-        // );
-        
-        // for (const benefit of benefitsToAdd) {
-        //   try {
-        //     const benefitData = {
-        //       benefit_title: benefit.title.trim(),
-        //       benefit_description: benefit.description.trim()
-        //     };
-            
-        //     console.log(`Adding benefit to puja ID ${createdPuja.id}:`, benefitData);
-        //     const benefitResult = await dispatch(addPujaBenefit({
-        //       pujaId: createdPuja.id,
-        //       benefit: benefitData
-        //     })) as any;
-            
-        //     if (!addPujaBenefit.fulfilled.match(benefitResult)) {
-        //       console.error('Failed to add benefit:', benefitResult.payload);
-        //     } else {
-        //       console.log('Benefit added successfully:', benefitResult.payload);
-        //     }
-        //   } catch (benefitError) {
-        //     console.error('Error adding benefit:', benefitError);
-        //   }
-        // }
-        
-        // Step 3: Upload images if any are selected
         if (formData.pujaImages && formData.pujaImages.length > 0) {
           console.log(`Uploading ${formData.pujaImages.length} images for puja ID: ${createdPuja.id}`);
           const uploadResult = await dispatch(uploadPujaImages({
@@ -396,19 +365,15 @@ const CreatePujaForm: React.FC<CreatePujaFormProps> = ({ onSuccess }) => {
             </div>
           </div>
           
-          {/* Display selected images preview */}
           {formData.pujaImages.length > 0 && (
             <div className="mt-4">
               <h4 className="text-sm font-medium text-gray-700 mb-2">Selected Images:</h4>
               <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                 {formData.pujaImages.map((file, index) => {
-                  // Create preview URL for the image
                   let previewUrl = '';
                   try {
                     previewUrl = createImagePreviewUrl(file);
-                  } catch (e) {
-                    // If we can't create a preview, we'll show the file icon
-                  }
+                  } catch (e) {}
                   
                   return (
                     <div key={index} className="relative bg-white p-3 rounded-lg border border-orange-200">
@@ -419,7 +384,6 @@ const CreatePujaForm: React.FC<CreatePujaFormProps> = ({ onSuccess }) => {
                             alt={`Preview ${index + 1}`} 
                             className="w-full h-full object-cover"
                             onError={(e) => {
-                              // If image fails to load, revoke the URL and show file icon
                               revokeImagePreviewUrl(previewUrl);
                               e.currentTarget.style.display = 'none';
                               if (e.currentTarget.nextElementSibling) {
@@ -450,10 +414,7 @@ const CreatePujaForm: React.FC<CreatePujaFormProps> = ({ onSuccess }) => {
                         <button
                           type="button"
                           onClick={() => {
-                            // Revoke the URL if it exists
-                            if (previewUrl) {
-                              revokeImagePreviewUrl(previewUrl);
-                            }
+                            if (previewUrl) revokeImagePreviewUrl(previewUrl);
                             const updatedImages = formData.pujaImages.filter((_, i) => i !== index);
                             handleInputChange('pujaImages', updatedImages);
                           }}
@@ -512,7 +473,6 @@ const CreatePujaForm: React.FC<CreatePujaFormProps> = ({ onSuccess }) => {
               </div>
             </div>
             
-            {/* Display selected temple image with remove option */}
             {formData.templeImage && (
               <div className="mt-4">
                 <div className="bg-white p-3 rounded-lg border border-indigo-200">
@@ -601,7 +561,7 @@ const CreatePujaForm: React.FC<CreatePujaFormProps> = ({ onSuccess }) => {
         </div>
       </div>
 
-      {/* Section 4: Plan Details */}
+      {/* Section 4: Plan Details - UPDATED FOR NUMBERS */}
       <div className="bg-gradient-to-r from-purple-50 to-purple-100 p-6 rounded-xl border border-purple-200">
         <h3 className="text-lg font-semibold text-purple-800 mb-4 font-['Philosopher'] flex items-center gap-2">
           <span className="text-2xl">📋</span>
@@ -625,15 +585,16 @@ const CreatePujaForm: React.FC<CreatePujaFormProps> = ({ onSuccess }) => {
               borderRadius: '0.5rem',
               border: '1px solid #E9D5FF',
             }}
+            maxTagCount={3}
           >
             {plans && plans.length > 0 ? (
               plans.map((plan) => (
-                <Option key={plan.id} value={plan.id.toString()}>
+                <Option key={plan.id} value={plan.id}>
                   {plan.name} - ₹{plan.actual_price}
                 </Option>
               ))
             ) : (
-              <Option disabled value="no-plans">No plans available</Option>
+              <Option disabled value={0}>No plans available</Option>
             )}
           </Select>
           <Text className="text-xs text-gray-500 mt-1">Hold Ctrl/Cmd to select multiple plans</Text>
@@ -782,7 +743,7 @@ const CreatePujaForm: React.FC<CreatePujaFormProps> = ({ onSuccess }) => {
         </div>
       </div>
 
-      {/* General Settings & Form Actions */}
+      {/* Section 8: General Settings */}
       <div className="bg-gradient-to-r from-gray-50 to-gray-100 p-6 rounded-xl border border-gray-200">
         <h3 className="text-lg font-semibold text-gray-800 mb-4 font-['Philosopher'] flex items-center gap-2">
           <span className="text-2xl">⚙️</span>
@@ -792,11 +753,13 @@ const CreatePujaForm: React.FC<CreatePujaFormProps> = ({ onSuccess }) => {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <Form.Item
             name="category"
-            label={<span className="block text-sm font-medium text-gray-700 mb-2">Category</span>}
+            label={<span className="block text-sm font-medium text-gray-700 mb-2">Categories (Multiple Selection)</span>}
           >
             <Select
-              value={formData.category ?? 'general'}
-              onChange={(value) => handleInputChange('category', value ?? 'general')}
+              mode="multiple"
+              value={formData.category ?? ['general']}
+              onChange={(value) => handleInputChange('category', value ?? ['general'])}
+              placeholder="Select categories"
               className="w-full"
               dropdownClassName="border border-gray-200 rounded-lg"
               style={{
@@ -804,6 +767,8 @@ const CreatePujaForm: React.FC<CreatePujaFormProps> = ({ onSuccess }) => {
                 borderRadius: '0.5rem',
                 border: '1px solid #E5E7EB',
               }}
+              maxTagCount={3}
+              maxTagTextLength={10}
             >
               <Option value="general">General</Option>
               <Option value="prosperity">Prosperity</Option>
@@ -812,6 +777,9 @@ const CreatePujaForm: React.FC<CreatePujaFormProps> = ({ onSuccess }) => {
               <Option value="marriage">Marriage</Option>
               <Option value="spiritual">Spiritual</Option>
             </Select>
+            <Text className="text-xs text-gray-500 mt-1">
+              Hold Ctrl/Cmd to select multiple categories
+            </Text>
           </Form.Item>
 
           <div className="flex items-center gap-6 mt-8">
@@ -855,7 +823,7 @@ const CreatePujaForm: React.FC<CreatePujaFormProps> = ({ onSuccess }) => {
                 subHeading: '',
                 about: '',
                 pujaImages: [],
-                templeImage: null, // Changed from '' to null for File | null type
+                templeImage: null,
                 templeAddress: '',
                 templeDescription: '',
                 benefits: [
@@ -864,7 +832,7 @@ const CreatePujaForm: React.FC<CreatePujaFormProps> = ({ onSuccess }) => {
                   { title: '', description: '' },
                   { title: '', description: '' },
                 ],
-                selectedPlanIds: [],
+                selectedPlanIds: [], // ✅ Reset to number[]
                 prasadPrice: 0,
                 prasadStatus: false,
                 dakshinaPrices: '',
@@ -873,7 +841,7 @@ const CreatePujaForm: React.FC<CreatePujaFormProps> = ({ onSuccess }) => {
                 manokamnaPrices: '',
                 manokamnaPricesUSD: '',
                 manokamnaStatus: false,
-                category: 'general',
+                category: ['general'],
                 isActive: true,
                 isFeatured: false,
               });
