@@ -4,10 +4,11 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useDispatch, useSelector } from 'react-redux';
+import { message } from 'antd';
 import { adminLogin } from '@/store/slices/authSlice';
 import { useRedirectIfAuthenticated } from '@/hooks/useAuth';
 import { Form, Input, Button, Typography, Card, Row, Col } from 'antd';
-import { GoogleOutlined, LockOutlined, UserOutlined } from '@ant-design/icons';
+import { LockOutlined, UserOutlined } from '@ant-design/icons';
 import type { AppDispatch } from '@/store';
 
 const { Title, Text } = Typography;
@@ -40,14 +41,8 @@ const SignInPage: React.FC = () => {
   // Update form error from Redux state
   useEffect(() => {
     if (error) {
-      form.setFields([
-        {
-          name: 'submit',
-          errors: [
-            typeof error === 'object' ? JSON.stringify(error) : error,
-          ],
-        },
-      ]);
+      // Show error message using Ant Design message component
+      message.error(typeof error === 'object' ? JSON.stringify(error) : error);
     }
   }, [error, form]);
 
@@ -68,6 +63,8 @@ const SignInPage: React.FC = () => {
       };
       // Dispatch the adminLogin thunk without .unwrap()
       await dispatch(adminLogin(payload) as any);
+      // Show success message
+      message.success('Login successful! Redirecting to dashboard...');
       // No need for manual redirection; useEffect handles it when user is set
     } catch (error) {
       // Errors are handled by the Redux state (updated in authSlice)
@@ -151,7 +148,8 @@ const SignInPage: React.FC = () => {
               </Form.Item>
             </Form>
 
-            <div className="mt-8">
+            {/* Removed Google Sign-in option */}
+            {/* <div className="mt-8">
               <div className="relative">
                 <div className="absolute inset-0 flex items-center">
                   <div className="w-full border-t border-gray-300" />
@@ -170,12 +168,13 @@ const SignInPage: React.FC = () => {
                   Sign in with Google
                 </Button>
               </div>
-            </div>
+            </div> */}
 
             <div className="mt-8 text-center">
-              <Text className="text-gray-600">
+              {/* Commented out All rights reserved */}
+              {/* <Text className="text-gray-600">
                 © {new Date().getFullYear()} Admin Portal. All rights reserved.
-              </Text>
+              </Text> */}
             </div>
           </Card>
         </Col>

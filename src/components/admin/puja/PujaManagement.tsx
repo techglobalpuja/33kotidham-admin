@@ -2,13 +2,14 @@
 
 import React, { useState } from 'react';
 import { useDispatch } from 'react-redux';
+import { AppDispatch } from '@/store';
 import { fetchPujas } from '@/store/slices/pujaSlice';
 import Button from '@/components/ui/Button';
 import PujaList from './components/PujaList';
 import PujaForm from './components/CreatePujaForm';
 
 const PujaManagement: React.FC = () => {
-  const dispatch = useDispatch();
+  const dispatch = useDispatch<AppDispatch>();
   const [activeSubTab, setActiveSubTab] = useState<'all' | 'add'>('all');
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
 

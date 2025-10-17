@@ -6,6 +6,7 @@ import { Modal, Form, Input, Button, Checkbox, Select, Typography, Row, Col } fr
 import { useDropzone } from 'react-dropzone';
 import { RootState } from '@/store';
 import { fetchPujaById, updatePuja, uploadPujaImages } from '@/store/slices/pujaSlice';
+import { fetchPlans } from '@/store/slices/planSlice';
 import { AppDispatch } from '@/store';
 
 const { Text } = Typography;
@@ -63,6 +64,10 @@ const UpdatePujaModal: React.FC<UpdatePujaModalProps> = ({
   const safeOnSuccess = onSuccess ?? (() => {});
   
   const dispatch = useDispatch<AppDispatch>();
+  
+  // Get plans from Redux store
+  const { plans, isLoading: plansLoading } = useSelector((state: RootState) => state.plan);
+  
   // Track if images have been changed
   const [imagesChanged, setImagesChanged] = useState(false);
   const [form] = Form.useForm();
@@ -93,6 +98,14 @@ const UpdatePujaModal: React.FC<UpdatePujaModalProps> = ({
     isActive: true,
     isFeatured: false,
   });
+
+  // Effect to populate form when pujaData is received
+  useEffect(() => {
+    // Fetch plans when modal is visible
+    if (isVisible) {
+      dispatch(fetchPlans());
+    }
+  }, [dispatch, isVisible]);
 
   // Effect to populate form when pujaData is received
   useEffect(() => {
@@ -157,6 +170,7 @@ const UpdatePujaModal: React.FC<UpdatePujaModalProps> = ({
           about: newFormData.about,
           templeAddress: newFormData.templeAddress,
           templeDescription: newFormData.templeDescription,
+          selectedPlanIds: newFormData.selectedPlanIds, // Add this missing field
           prasadPrice: newFormData.prasadPrice,
           prasadStatus: newFormData.prasadStatus,
           dakshinaPrices: newFormData.dakshinaPrices,
@@ -858,6 +872,7 @@ const UpdatePujaModal: React.FC<UpdatePujaModalProps> = ({
                 value={formData.selectedPlanIds ?? []}
                 onChange={(value) => handleInputChange('selectedPlanIds', value ?? [])}
                 placeholder="Select plans"
+                loading={plansLoading}
                 className="w-full"
                 dropdownClassName="border border-purple-200 rounded-lg"
                 style={{
@@ -866,10 +881,15 @@ const UpdatePujaModal: React.FC<UpdatePujaModalProps> = ({
                   border: '1px solid #E9D5FF',
                 }}
               >
-                <Option value="1">Basic Puja Package - ₹5,000</Option>
-                <Option value="2">Premium VIP Experience - ₹15,000</Option>
-                <Option value="3">Standard Family Package - ₹8,000</Option>
-                <Option value="4">Exclusive VIP Darshan - ₹25,000</Option>
+                {plans && plans.length > 0 ? (
+                  plans.map((plan) => (
+                    <Option key={plan.id} value={plan.id.toString()}>
+                      {plan.name} - ₹{plan.actual_price}
+                    </Option>
+                  ))
+                ) : (
+                  <Option disabled value="no-plans">No plans available</Option>
+                )}
               </Select>
               <Text className="text-xs text-gray-500 mt-1">Hold Ctrl/Cmd to select multiple plans</Text>
             </Form.Item>

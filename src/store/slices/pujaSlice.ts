@@ -38,7 +38,7 @@ export interface Puja {
   created_date?: string;
   selected_plan?: string;
   benefits?: Benefit[];
-  selected_plan_ids?: string[];
+  selected_plan_ids?: number[];
   images?: Image[]; // Add this property to match API response
 }
 
@@ -121,7 +121,7 @@ export const updatePuja = createAsyncThunk(
     is_active: boolean;
     is_featured: boolean;
     benefits: Benefit[];
-    selected_plan_ids: string[];
+    selected_plan_ids: number[];
   }, { rejectWithValue }) => {
     try {
       const { id, ...pujaData } = updateData;

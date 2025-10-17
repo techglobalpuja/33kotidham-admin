@@ -157,6 +157,34 @@ export interface ChawadaFormData {
   isActive: boolean;
 }
 
+// Chadawa types for API
+export interface Chadawa {
+  id: number;
+  name: string;
+  description: string;
+  image_url: string;
+  price: number;
+  requires_note: boolean;
+}
+
+// Blog types for API
+export interface Blog {
+  id: number;
+  title: string;
+  subtitle: string;
+  content: string;
+  thumbnail_image: string;
+  meta_description: string;
+  tags: string;
+  category_id: number;
+  is_featured: boolean;
+  is_active: boolean;
+  publish_time: string;
+  slug: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
 export interface ProductFormData {
   name: string;
   price: number;
@@ -254,7 +282,7 @@ export interface Puja {
     title: string;
     description: string;
   }[];
-  selectedPlanIds: string[];
+  selectedPlanIds: number[];
   prasadPrice: number;
   prasadStatus: boolean;
   dakshinaPrices: string;
