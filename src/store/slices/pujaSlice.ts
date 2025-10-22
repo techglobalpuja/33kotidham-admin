@@ -39,6 +39,7 @@ export interface Puja {
   selected_plan?: string;
   benefits?: Benefit[];
   selected_plan_ids?: number[];
+  chadawa_ids?: number[]; // ✅ NEW: chadawa_ids field
   images?: Image[]; // Add this property to match API response
 }
 
@@ -60,7 +61,7 @@ const initialState: PujaState = {
 // Async thunk for creating a puja
 export const createPuja = createAsyncThunk(
   'puja/createPuja',
-  async (pujaData: Puja, { rejectWithValue }) => {
+  async (pujaData: any, { rejectWithValue }) => { // ✅ Changed to any to allow additional fields
     try {
       const response = await axiosInstance.post('/api/v1/pujas', pujaData);
       return response?.data as Puja;
@@ -122,6 +123,7 @@ export const updatePuja = createAsyncThunk(
     is_featured: boolean;
     benefits: Benefit[];
     selected_plan_ids: number[];
+    chadawa_ids: number[]; // ✅ NEW: chadawa_ids field
   }, { rejectWithValue }) => {
     try {
       const { id, ...pujaData } = updateData;

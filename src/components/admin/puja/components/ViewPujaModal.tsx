@@ -2,6 +2,8 @@
 
 import React from 'react';
 import { Modal, Typography } from 'antd';
+import { useSelector } from 'react-redux';
+import { RootState } from '@/store';
 
 const { Text } = Typography;
 
@@ -37,6 +39,10 @@ interface PujaData {
   is_featured?: boolean | null;
   puja_images?: string[] | null;
   images?: Image[] | null;
+  selected_plan_ids?: number[] | null; // ✅ NEW: plan IDs
+  chadawa_ids?: number[] | null; // ✅ NEW: chadawa IDs
+  date?: string | null; // ✅ NEW: date
+  time?: string | null; // ✅ NEW: time
 }
 
 interface ViewPujaModalProps {
@@ -53,6 +59,10 @@ const ViewPujaModal: React.FC<ViewPujaModalProps> = ({
   // Enhanced safety checks and handlers
   const isVisible = Boolean(visible ?? false);
   const safeOnCancel = onCancel ?? (() => {});
+  
+  // ✅ NEW: Access plan and chadawa data from Redux store
+  const { plans } = useSelector((state: RootState) => state.plan);
+  const { chadawas } = useSelector((state: RootState) => state.chadawa);
 
   // Early return with comprehensive null checks
   if (!isVisible || !puja || typeof puja !== 'object') {
@@ -87,6 +97,10 @@ const ViewPujaModal: React.FC<ViewPujaModalProps> = ({
     is_featured: Boolean(puja.is_featured ?? false),
     puja_images: Array.isArray(puja.puja_images) ? puja.puja_images : [],
     images: Array.isArray(puja.images) ? puja.images : [],
+    selected_plan_ids: Array.isArray(puja.selected_plan_ids) ? puja.selected_plan_ids : [], // ✅ NEW: plan IDs
+    chadawa_ids: Array.isArray(puja.chadawa_ids) ? puja.chadawa_ids : [], // ✅ NEW: chadawa IDs
+    date: (puja.date ?? '').toString().trim() || 'N/A', // ✅ NEW: date
+    time: (puja.time ?? '').toString().trim() || 'N/A', // ✅ NEW: time
   };
 
   // Format price safely
@@ -100,6 +114,30 @@ const ViewPujaModal: React.FC<ViewPujaModalProps> = ({
     } catch (error) {
       return `₹${price}`;
     }
+  };
+
+  // ✅ NEW: Function to get plan names by IDs
+  const getPlanNames = (planIds: number[]) => {
+    if (!Array.isArray(planIds) || planIds.length === 0) return 'None selected';
+    
+    return planIds
+      .map(id => {
+        const plan = plans?.find(p => p.id === id);
+        return plan ? plan.name : `Unknown Plan (${id})`;
+      })
+      .join(', ');
+  };
+
+  // ✅ NEW: Function to get chadawa names by IDs
+  const getChadawaNames = (chadawaIds: number[]) => {
+    if (!Array.isArray(chadawaIds) || chadawaIds.length === 0) return 'None selected';
+    
+    return chadawaIds
+      .map(id => {
+        const chadawa = chadawas?.find(c => c.id === id);
+        return chadawa ? chadawa.name : `Unknown Chadawa (${id})`;
+      })
+      .join(', ');
   };
 
   return (
@@ -152,6 +190,21 @@ const ViewPujaModal: React.FC<ViewPujaModalProps> = ({
               <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
               <div className="w-full px-4 py-3 bg-orange-50 border border-orange-200 rounded-lg text-black min-h-24">
                 {safeData.description}
+              </div>
+            </div>
+            
+            {/* ✅ NEW: Date and Time Fields */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Puja Date</label>
+              <div className="w-full px-4 py-3 bg-orange-50 border border-orange-200 rounded-lg text-black">
+                {safeData.date}
+              </div>
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Puja Time</label>
+              <div className="w-full px-4 py-3 bg-orange-50 border border-orange-200 rounded-lg text-black">
+                {safeData.time}
               </div>
             </div>
             
@@ -352,6 +405,30 @@ const ViewPujaModal: React.FC<ViewPujaModalProps> = ({
               <label className="ml-2 block text-sm text-gray-700">
                 {safeData.is_manokamna_active ? 'Active' : 'Inactive'}
               </label>
+            </div>
+          </div>
+        </div>
+
+        {/* ✅ NEW: Section for Plan and Chadawa Information */}
+        <div className="bg-gradient-to-r from-purple-50 to-purple-100 p-6 rounded-xl border border-purple-200 mb-6">
+          <h3 className="text-lg font-semibold text-purple-800 mb-4 font-['Philosopher'] flex items-center gap-2">
+            <span className="text-2xl">📋</span>
+            Associated Plans & Chadawas
+          </h3>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Selected Plans</label>
+              <div className="w-full px-4 py-3 bg-purple-50 border border-purple-200 rounded-lg text-black min-h-12">
+                {getPlanNames(safeData.selected_plan_ids)}
+              </div>
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Selected Chadawas</label>
+              <div className="w-full px-4 py-3 bg-purple-50 border border-purple-200 rounded-lg text-black min-h-12">
+                {getChadawaNames(safeData.chadawa_ids)}
+              </div>
             </div>
           </div>
         </div>

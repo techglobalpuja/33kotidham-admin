@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useDispatch, useSelector } from 'react-redux';
 import { createPuja, uploadPujaImages } from '@/store/slices/pujaSlice';
 import { fetchPlans } from '@/store/slices/planSlice';
+import { fetchChadawas } from '@/store/slices/chadawaSlice';
 import { AppDispatch, RootState } from '@/store';
 import { Form, Input, Button, Checkbox, Select, Typography } from 'antd';
 import { useDropzone } from 'react-dropzone';
@@ -27,6 +28,9 @@ interface PujaFormData {
   templeDescription: string;
   benefits: Benefit[];
   selectedPlanIds: number[]; // ✅ CHANGED: number[] instead of string[]
+  selectedChadawaIds: number[]; // ✅ NEW: chadawa IDs
+  date: string; // ✅ CHANGED: just date
+  time: string; // ✅ CHANGED: just time
   prasadPrice: number;
   prasadStatus: boolean;
   dakshinaPrices: string;
@@ -50,9 +54,11 @@ const CreatePujaForm: React.FC<CreatePujaFormProps> = ({ onSuccess }) => {
   const [form] = Form.useForm();
   
   const { plans, isLoading: plansLoading } = useSelector((state: RootState) => state.plan);
-  
+  const { chadawas, isLoading: chadawasLoading } = useSelector((state: RootState) => state.chadawa);
+
   useEffect(() => {
     dispatch(fetchPlans());
+    dispatch(fetchChadawas()); // ✅ NEW: fetch chadawas
   }, [dispatch]);
 
   const [formData, setFormData] = useState<PujaFormData>({
@@ -70,6 +76,9 @@ const CreatePujaForm: React.FC<CreatePujaFormProps> = ({ onSuccess }) => {
       { title: '', description: '' },
     ],
     selectedPlanIds: [], // ✅ CHANGED: number[] empty array
+    selectedChadawaIds: [], // ✅ NEW: empty chadawa IDs array
+    date: '', // ✅ CHANGED: just date
+    time: '', // ✅ CHANGED: just time
     prasadPrice: 0,
     prasadStatus: false,
     dakshinaPrices: '',
@@ -148,6 +157,9 @@ const CreatePujaForm: React.FC<CreatePujaFormProps> = ({ onSuccess }) => {
   const handleInputChange = (field: keyof PujaFormData, value: any) => {
     // ✅ SPECIAL HANDLING: Convert plan IDs to numbers
     if (field === 'selectedPlanIds') {
+      const numericValues = value.map((id: string) => parseInt(id, 10)).filter((id: any) => !isNaN(id));
+      setFormData((prev) => ({ ...prev, [field]: numericValues }));
+    } else if (field === 'selectedChadawaIds') { // ✅ NEW: handle chadawa IDs
       const numericValues = value.map((id: string) => parseInt(id, 10)).filter((id: any) => !isNaN(id));
       setFormData((prev) => ({ ...prev, [field]: numericValues }));
     } else {
@@ -230,13 +242,13 @@ const CreatePujaForm: React.FC<CreatePujaFormProps> = ({ onSuccess }) => {
           benefit_description: benefit.description.trim()
         }));
 
-      // ✅ UPDATED: plan_ids as NUMBER array, categories as string array
+      // ✅ UPDATED: plan_ids as NUMBER array, categories as string array, chadawa_ids as number array
       const requestData = {
         name: (formData.pujaName ?? '').trim(),
         sub_heading: (formData.subHeading ?? '').trim(),
         description: (formData.about ?? '').trim(),
-        date: null,
-        time: null,
+        date: formData.date || null, // ✅ CHANGED: just date
+        time: formData.time || null, // ✅ CHANGED: just time
         temple_image_url: formData.templeImage?.name ?? '',
         temple_address: (formData.templeAddress ?? '').trim(),
         temple_description: (formData.templeDescription ?? '').trim(),
@@ -251,6 +263,7 @@ const CreatePujaForm: React.FC<CreatePujaFormProps> = ({ onSuccess }) => {
         is_manokamna_active: formData.manokamnaStatus ?? false,
         category: formData.category ?? ['general'], // ✅ string[] 
         plan_ids: formData.selectedPlanIds ?? [], // ✅ number[] - [1, 2, 3]
+        chadawa_ids: formData.selectedChadawaIds ?? [], // ✅ NEW: chadawa IDs
       } as any;
       
       console.log('Creating puja with data:', requestData);
@@ -433,6 +446,31 @@ const CreatePujaForm: React.FC<CreatePujaFormProps> = ({ onSuccess }) => {
             </div>
           )}
         </Form.Item>
+
+        {/* ✅ CHANGED: Date and Time Fields */}
+        <Form.Item
+          name="date"
+          label={<span className="block text-sm font-medium text-gray-700 mb-2">Puja Date</span>}
+        >
+          <Input
+            type="date"
+            value={formData.date ?? ''}
+            onChange={(e) => handleInputChange('date', e.target.value ?? '')}
+            className="w-full px-4 py-3 border border-orange-200 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent text-black"
+          />
+        </Form.Item>
+
+        <Form.Item
+          name="time"
+          label={<span className="block text-sm font-medium text-gray-700 mb-2">Puja Time</span>}
+        >
+          <Input
+            type="time"
+            value={formData.time ?? ''}
+            onChange={(e) => handleInputChange('time', e.target.value ?? '')}
+            className="w-full px-4 py-3 border border-orange-200 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent text-black"
+          />
+        </Form.Item>
       </div>
 
       {/* Section 2: Temple Details */}
@@ -598,6 +636,46 @@ const CreatePujaForm: React.FC<CreatePujaFormProps> = ({ onSuccess }) => {
             )}
           </Select>
           <Text className="text-xs text-gray-500 mt-1">Hold Ctrl/Cmd to select multiple plans</Text>
+        </Form.Item>
+      </div>
+
+      {/* ✅ NEW: Section for Chadawa Selection */}
+      <div className="bg-gradient-to-r from-teal-50 to-teal-100 p-6 rounded-xl border border-teal-200">
+        <h3 className="text-lg font-semibold text-teal-800 mb-4 font-['Philosopher'] flex items-center gap-2">
+          <span className="text-2xl">📿</span>
+          Chadawa Selection
+        </h3>
+
+        <Form.Item
+          name="selectedChadawaIds"
+          label={<span className="block text-sm font-medium text-gray-700 mb-2">Select Chadawas (Multiple Selection)</span>}
+        >
+          <Select
+            mode="multiple"
+            value={formData.selectedChadawaIds ?? []}
+            onChange={(value) => handleInputChange('selectedChadawaIds', value ?? [])}
+            placeholder="Select chadawas"
+            loading={chadawasLoading}
+            className="w-full"
+            dropdownClassName="border border-teal-200 rounded-lg"
+            style={{
+              background: 'white',
+              borderRadius: '0.5rem',
+              border: '1px solid #CCFBF1',
+            }}
+            maxTagCount={3}
+          >
+            {chadawas && chadawas.length > 0 ? (
+              chadawas.map((chadawa) => (
+                <Option key={chadawa.id} value={chadawa.id}>
+                  {chadawa.name}
+                </Option>
+              ))
+            ) : (
+              <Option disabled value={0}>No chadawas available</Option>
+            )}
+          </Select>
+          <Text className="text-xs text-gray-500 mt-1">Hold Ctrl/Cmd to select multiple chadawas</Text>
         </Form.Item>
       </div>
 
@@ -806,6 +884,7 @@ const CreatePujaForm: React.FC<CreatePujaFormProps> = ({ onSuccess }) => {
         </div>
       </div>
 
+      {/* Update reset function to include new fields */}
       <Form.Item name="submit">
         <div className="flex gap-4">
           <Button
@@ -833,6 +912,9 @@ const CreatePujaForm: React.FC<CreatePujaFormProps> = ({ onSuccess }) => {
                   { title: '', description: '' },
                 ],
                 selectedPlanIds: [], // ✅ Reset to number[]
+                selectedChadawaIds: [], // ✅ NEW: reset chadawa IDs
+                date: '', // ✅ CHANGED: reset date
+                time: '', // ✅ CHANGED: reset time
                 prasadPrice: 0,
                 prasadStatus: false,
                 dakshinaPrices: '',

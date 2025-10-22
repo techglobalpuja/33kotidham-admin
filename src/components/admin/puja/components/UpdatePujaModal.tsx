@@ -7,6 +7,7 @@ import { useDropzone } from 'react-dropzone';
 import { RootState } from '@/store';
 import { fetchPujaById, updatePuja, uploadPujaImages, deletePujaImage } from '@/store/slices/pujaSlice';
 import { fetchPlans } from '@/store/slices/planSlice';
+import { fetchChadawas } from '@/store/slices/chadawaSlice';
 import { AppDispatch } from '@/store';
 
 const { Text } = Typography;
@@ -28,6 +29,9 @@ interface PujaFormData {
   templeDescription?: string | null;
   benefits?: Benefit[] | null;
   selectedPlanIds?: number[] | null;
+  selectedChadawaIds?: number[] | null; // ✅ NEW: chadawa IDs
+  date?: string | null; // ✅ CHANGED: just date
+  time?: string | null; // ✅ CHANGED: just time
   prasadPrice?: number | null;
   prasadStatus?: boolean | null;
   dakshinaPrices?: string | null;
@@ -65,7 +69,8 @@ const UpdatePujaModal: React.FC<UpdatePujaModalProps> = ({
   
   const dispatch = useDispatch<AppDispatch>();
   const { plans, isLoading: plansLoading } = useSelector((state: RootState) => state.plan);
-  
+  const { chadawas, isLoading: chadawasLoading } = useSelector((state: RootState) => state.chadawa); // ✅ NEW: chadawa state
+
   const [imagesChanged, setImagesChanged] = useState(false);
   const [form] = Form.useForm();
 
@@ -85,6 +90,9 @@ const UpdatePujaModal: React.FC<UpdatePujaModalProps> = ({
       { title: '', description: '' },
     ],
     selectedPlanIds: [],
+    selectedChadawaIds: [], // ✅ NEW: chadawa IDs
+    date: '',
+    time: '',
     prasadPrice: 0,
     prasadStatus: false,
     dakshinaPrices: '',
@@ -104,6 +112,7 @@ const UpdatePujaModal: React.FC<UpdatePujaModalProps> = ({
   useEffect(() => {
     if (isVisible) {
       dispatch(fetchPlans());
+      dispatch(fetchChadawas()); // ✅ NEW: fetch chadawas
     }
   }, [dispatch, isVisible]);
 
@@ -120,6 +129,14 @@ const UpdatePujaModal: React.FC<UpdatePujaModalProps> = ({
             .map((id: any) => Number(id));
         } else if (Array.isArray(pujaData.plan_ids)) {
           safeSelectedPlanIds = pujaData.plan_ids
+            .filter((id: any) => id != null && !isNaN(Number(id)))
+            .map((id: any) => Number(id));
+        }
+
+        // ✅ NEW: Handle chadawa_ids
+        let safeSelectedChadawaIds: number[] = [];
+        if (Array.isArray(pujaData.chadawa_ids)) {
+          safeSelectedChadawaIds = pujaData.chadawa_ids
             .filter((id: any) => id != null && !isNaN(Number(id)))
             .map((id: any) => Number(id));
         }
@@ -204,6 +221,9 @@ const UpdatePujaModal: React.FC<UpdatePujaModalProps> = ({
           templeDescription: (pujaData.temple_description ?? '').toString().trim(),
           benefits: safeBenefits,
           selectedPlanIds: safeSelectedPlanIds,
+          selectedChadawaIds: safeSelectedChadawaIds, // ✅ NEW: chadawa IDs
+          date: (pujaData.date ?? '').toString().trim(), // ✅ CHANGED: just date
+          time: (pujaData.time ?? '').toString().trim(), // ✅ CHANGED: just time
           prasadPrice: (() => {
             const price = pujaData.prasad_price;
             if (price === null || price === undefined) return 0;
@@ -242,6 +262,9 @@ const UpdatePujaModal: React.FC<UpdatePujaModalProps> = ({
           templeAddress: newFormData.templeAddress,
           templeDescription: newFormData.templeDescription,
           selectedPlanIds: newFormData.selectedPlanIds,
+          selectedChadawaIds: newFormData.selectedChadawaIds, // ✅ NEW: chadawa IDs
+          date: newFormData.date, // ✅ CHANGED: just date
+          time: newFormData.time, // ✅ CHANGED: just time
           prasadPrice: newFormData.prasadPrice,
           prasadStatus: newFormData.prasadStatus,
           dakshinaPrices: newFormData.dakshinaPrices,
@@ -354,6 +377,11 @@ const UpdatePujaModal: React.FC<UpdatePujaModalProps> = ({
             safeValue = Array.isArray(value) ? value : [];
             break;
           case 'selectedPlanIds':
+            safeValue = Array.isArray(value) 
+              ? value.filter(v => v != null).map((v: string) => parseInt(v, 10)).filter(id => !isNaN(id))
+              : [];
+            break;
+          case 'selectedChadawaIds': // ✅ NEW: handle chadawa IDs
             safeValue = Array.isArray(value) 
               ? value.filter(v => v != null).map((v: string) => parseInt(v, 10)).filter(id => !isNaN(id))
               : [];
@@ -523,8 +551,8 @@ const UpdatePujaModal: React.FC<UpdatePujaModalProps> = ({
         name: (formData.pujaName ?? '').trim(),
         sub_heading: (formData.subHeading ?? '').trim(),
         description: (formData.about ?? '').trim(),
-        date: null,
-        time: null,
+        date: formData.date || null, // ✅ CHANGED: just date
+        time: formData.time || null, // ✅ CHANGED: just time
         temple_image_url: (formData.templeImage ?? '').trim(),
         temple_address: (formData.templeAddress ?? '').trim(),
         temple_description: (formData.templeDescription ?? '').trim(),
@@ -538,7 +566,8 @@ const UpdatePujaModal: React.FC<UpdatePujaModalProps> = ({
         manokamna_prices_usd: (formData.manokamnaPricesUSD ?? '').trim(),
         is_manokamna_active: Boolean(formData.manokamnaStatus ?? false),
         category: categoryArray,
-        selected_plan_ids: formData.selectedPlanIds ?? [],
+        selected_plan_ids: formData.selectedPlanIds ?? [], // ✅ Keep as is
+        chadawa_ids: formData.selectedChadawaIds ?? [], // ✅ NEW: chadawa IDs
         is_active: Boolean(formData.isActive ?? true),
         is_featured: Boolean(formData.isFeatured ?? false),
       } as any;
@@ -616,6 +645,31 @@ const UpdatePujaModal: React.FC<UpdatePujaModalProps> = ({
                     onChange={(e) => handleInputChange('subHeading', e?.target?.value ?? '')}
                     placeholder="Enter puja sub heading"
                     className="w-full px-4 py-3 border border-orange-200 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent text-black placeholder-gray-400"
+                  />
+                </Form.Item>
+              </Col>
+            </Row>
+
+            {/* ✅ CHANGED: Date and Time Fields */}
+            <Row gutter={16}>
+              <Col span={12}>
+                <Form.Item name="date" label={<span className="block text-sm font-medium text-gray-700 mb-2">Puja Date</span>}>
+                  <Input
+                    type="date"
+                    value={(formData.date ?? '').toString()}
+                    onChange={(e) => handleInputChange('date', e?.target?.value ?? '')}
+                    className="w-full px-4 py-3 border border-orange-200 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent text-black"
+                  />
+                </Form.Item>
+              </Col>
+
+              <Col span={12}>
+                <Form.Item name="time" label={<span className="block text-sm font-medium text-gray-700 mb-2">Puja Time</span>}>
+                  <Input
+                    type="time"
+                    value={(formData.time ?? '').toString()}
+                    onChange={(e) => handleInputChange('time', e?.target?.value ?? '')}
+                    className="w-full px-4 py-3 border border-orange-200 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent text-black"
                   />
                 </Form.Item>
               </Col>
@@ -1037,6 +1091,46 @@ const UpdatePujaModal: React.FC<UpdatePujaModalProps> = ({
                 </span>
               </Text>
             </div>
+          </div>
+
+          {/* ✅ NEW: Section for Chadawa Selection */}
+          <div className="bg-gradient-to-r from-teal-50 to-teal-100 p-6 rounded-xl border border-teal-200 mb-6">
+            <h3 className="text-lg font-semibold text-teal-800 mb-4 font-['Philosopher'] flex items-center gap-2">
+              <span className="text-2xl">📿</span>
+              Chadawa Selection
+            </h3>
+
+            <Form.Item
+              name="selectedChadawaIds"
+              label={<span className="block text-sm font-medium text-gray-700 mb-2">Select Chadawas (Multiple Selection)</span>}
+            >
+              <Select
+                mode="multiple"
+                value={formData.selectedChadawaIds ?? []}
+                onChange={(value) => handleInputChange('selectedChadawaIds', value ?? [])}
+                placeholder="Select chadawas"
+                loading={chadawasLoading}
+                className="w-full"
+                dropdownClassName="border border-teal-200 rounded-lg"
+                style={{
+                  background: 'white',
+                  borderRadius: '0.5rem',
+                  border: '1px solid #CCFBF1',
+                }}
+                maxTagCount={3}
+              >
+                {chadawas && chadawas.length > 0 ? (
+                  chadawas.map((chadawa) => (
+                    <Option key={chadawa.id} value={chadawa.id}>
+                      {chadawa.name}
+                    </Option>
+                  ))
+                ) : (
+                  <Option disabled value={0}>No chadawas available</Option>
+                )}
+              </Select>
+              <Text className="text-xs text-gray-500 mt-1">Hold Ctrl/Cmd to select multiple chadawas</Text>
+            </Form.Item>
           </div>
 
           {/* Section 8: General Settings */}
