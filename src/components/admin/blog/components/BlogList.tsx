@@ -361,7 +361,7 @@ const BlogList: React.FC<BlogListProps> = ({ viewMode = 'grid' }) => {
               
               <div className="space-y-2">
                 <div className="flex justify-between items-start">
-                  <h4 className="font-semibold text-gray-900 text-lg font-['Philosopher'] leading-tight">{blog.title}</h4>
+                  <h4 className="font-semibold text-gray-900 text-lg   leading-tight">{blog.title}</h4>
                 </div>
                 
                 <p className="text-sm text-blue-600 font-medium">{blog.subtitle}</p>
@@ -456,7 +456,7 @@ const BlogList: React.FC<BlogListProps> = ({ viewMode = 'grid' }) => {
                           </div>
                         </div>
                         <div className="ml-4">
-                          <div className="text-sm font-medium text-gray-900 font-['Philosopher']">{blog.title}</div>
+                          <div className="text-sm font-medium text-gray-900  ">{blog.title}</div>
                           <div className="text-sm text-blue-600">{blog.subtitle}</div>
                           <div className="text-xs text-gray-500">Published: {dayjs(blog.publish_time).format('MMM D, YYYY')}</div>
                         </div>

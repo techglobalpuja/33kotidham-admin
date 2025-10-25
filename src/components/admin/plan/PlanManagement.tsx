@@ -58,7 +58,7 @@ const PlanManagement: React.FC = () => {
           <div className="p-6">
             <div className="flex justify-between items-center mb-6">
               <div>
-                <h2 className="text-xl font-semibold text-gray-900 font-['Philosopher']">All Plans</h2>
+                <h2 className="text-xl font-semibold text-gray-900  ">All Plans</h2>
                 <p className="text-sm text-gray-600 mt-1">Manage your existing plan offerings</p>
               </div>
               <div className="flex gap-3">
@@ -114,7 +114,7 @@ const PlanManagement: React.FC = () => {
         {activeSubTab === 'add' && (
           <div className="p-6">
             <div className="mb-6">
-              <h2 className="text-xl font-semibold text-gray-900 font-['Philosopher']">Create New Plan</h2>
+              <h2 className="text-xl font-semibold text-gray-900  ">Create New Plan</h2>
               <p className="text-sm text-gray-600 mt-1">Complete plan setup with all required details</p>
             </div>
             <CreatePlanForm onSuccess={handleCreateSuccess} />

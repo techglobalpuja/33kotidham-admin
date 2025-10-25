@@ -18,7 +18,7 @@ const ChawadaManagement: React.FC = () => {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-bold text-gray-900 font-['Philosopher']">Chadawa Management</h2>
+          <h2 className="text-2xl font-bold text-gray-900">Chadawa Management</h2>
           <p className="text-sm text-gray-600 mt-1">Manage your chadawa offerings and prices</p>
         </div>
         <div className="flex space-x-3">

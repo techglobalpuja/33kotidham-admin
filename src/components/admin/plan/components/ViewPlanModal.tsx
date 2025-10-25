@@ -65,7 +65,7 @@ const ViewPlanModal: React.FC<ViewPlanModalProps> = ({
       title={
         <div className="flex items-center gap-2">
           <span className="text-2xl">📋</span>
-          <span className="font-['Philosopher'] text-xl">View Plan Details</span>
+          <span className="  text-xl">View Plan Details</span>
         </div>
       }
       open={visible}
@@ -78,7 +78,7 @@ const ViewPlanModal: React.FC<ViewPlanModalProps> = ({
       <div className="max-h-[70vh] overflow-y-auto pr-2">
         {/* Plan Header Info */}
         <div className="bg-white p-4 rounded-lg mb-6 border border-purple-200 shadow-sm">
-          <h4 className="font-medium text-purple-800 text-lg font-['Philosopher']">
+          <h4 className="font-medium text-purple-800 text-lg  ">
             Plan: {safeData.name}
           </h4>
           <p className="text-sm text-purple-600">ID: {safeData.id}</p>
@@ -86,7 +86,7 @@ const ViewPlanModal: React.FC<ViewPlanModalProps> = ({
 
         {/* Section 1: Plan Details */}
         <div className="bg-gradient-to-r from-purple-50 to-purple-100 p-6 rounded-xl border border-purple-200 mb-6">
-          <h3 className="text-lg font-semibold text-purple-800 mb-4 font-['Philosopher'] flex items-center gap-2">
+          <h3 className="text-lg font-semibold text-purple-800 mb-4   flex items-center gap-2">
             <span className="text-2xl">📋</span>
             Plan Details
           </h3>
@@ -144,7 +144,7 @@ const ViewPlanModal: React.FC<ViewPlanModalProps> = ({
 
         {/* Section 2: Pricing */}
         <div className="bg-gradient-to-r from-green-50 to-green-100 p-6 rounded-xl border border-green-200 mb-6">
-          <h3 className="text-lg font-semibold text-green-800 mb-4 font-['Philosopher'] flex items-center gap-2">
+          <h3 className="text-lg font-semibold text-green-800 mb-4   flex items-center gap-2">
             <span className="text-2xl">💰</span>
             Pricing Details
           </h3>

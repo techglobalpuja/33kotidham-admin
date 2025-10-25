@@ -145,7 +145,7 @@ const ViewPujaModal: React.FC<ViewPujaModalProps> = ({
       title={
         <div className="flex items-center gap-2">
           <span className="text-2xl">🛕</span>
-          <span className="font-['Philosopher'] text-xl">View Puja Details</span>
+          <span className="  text-xl">View Puja Details</span>
         </div>
       }
       open={visible}
@@ -158,7 +158,7 @@ const ViewPujaModal: React.FC<ViewPujaModalProps> = ({
       <div className="max-h-[75vh] overflow-y-auto pr-2">
         {/* Puja Header Info */}
         <div className="bg-white p-4 rounded-lg mb-6 border border-orange-200 shadow-sm">
-          <h4 className="font-medium text-orange-800 text-lg font-['Philosopher']">
+          <h4 className="font-medium text-orange-800 text-lg  ">
             Puja: {safeData.name}
           </h4>
           <p className="text-sm text-orange-600">ID: {safeData.id}</p>
@@ -166,7 +166,7 @@ const ViewPujaModal: React.FC<ViewPujaModalProps> = ({
 
         {/* Section 1: Puja Details */}
         <div className="bg-gradient-to-r from-orange-50 to-orange-100 p-6 rounded-xl border border-orange-200 mb-6">
-          <h3 className="text-lg font-semibold text-orange-800 mb-4 font-['Philosopher'] flex items-center gap-2">
+          <h3 className="text-lg font-semibold text-orange-800 mb-4   flex items-center gap-2">
             <span className="text-2xl">🛕</span>
             1. Puja Details
           </h3>
@@ -245,7 +245,7 @@ const ViewPujaModal: React.FC<ViewPujaModalProps> = ({
 
         {/* Section 2: Temple Details */}
         <div className="bg-gradient-to-r from-indigo-50 to-indigo-100 p-6 rounded-xl border border-indigo-200 mb-6">
-          <h3 className="text-lg font-semibold text-indigo-800 mb-4 font-['Philosopher'] flex items-center gap-2">
+          <h3 className="text-lg font-semibold text-indigo-800 mb-4   flex items-center gap-2">
             <span className="text-2xl">🏦</span>
             2. Temple Details
           </h3>
@@ -276,7 +276,7 @@ const ViewPujaModal: React.FC<ViewPujaModalProps> = ({
 
         {/* Section 3: Puja Benefits */}
         <div className="bg-gradient-to-r from-green-50 to-green-100 p-6 rounded-xl border border-green-200 mb-6">
-          <h3 className="text-lg font-semibold text-green-800 mb-4 font-['Philosopher'] flex items-center gap-2">
+          <h3 className="text-lg font-semibold text-green-800 mb-4   flex items-center gap-2">
             <span className="text-2xl">✨</span>
             3. Puja Benefits
           </h3>
@@ -324,8 +324,8 @@ const ViewPujaModal: React.FC<ViewPujaModalProps> = ({
         </div>
 
         {/* Section 4: Prasad */}
-        <div className="bg-gradient-to-r from-yellow-50 to-yellow-100 p-6 rounded-xl border border-yellow-200 mb-6">
-          <h3 className="text-lg font-semibold text-yellow-800 mb-4 font-['Philosopher'] flex items-center gap-2">
+        {/* <div className="bg-gradient-to-r from-yellow-50 to-yellow-100 p-6 rounded-xl border border-yellow-200 mb-6">
+          <h3 className="text-lg font-semibold text-yellow-800 mb-4   flex items-center gap-2">
             <span className="text-2xl">🍯</span>
             4. Prasad
           </h3>
@@ -345,11 +345,11 @@ const ViewPujaModal: React.FC<ViewPujaModalProps> = ({
               </label>
             </div>
           </div>
-        </div>
+        </div> */}
 
         {/* Section 5: Dakshina */}
-        <div className="bg-gradient-to-r from-red-50 to-red-100 p-6 rounded-xl border border-red-200 mb-6">
-          <h3 className="text-lg font-semibold text-red-800 mb-4 font-['Philosopher'] flex items-center gap-2">
+        {/* <div className="bg-gradient-to-r from-red-50 to-red-100 p-6 rounded-xl border border-red-200 mb-6">
+          <h3 className="text-lg font-semibold text-red-800 mb-4   flex items-center gap-2">
             <span className="text-2xl">💰</span>
             5. Dakshina
           </h3>
@@ -376,11 +376,11 @@ const ViewPujaModal: React.FC<ViewPujaModalProps> = ({
               </label>
             </div>
           </div>
-        </div>
+        </div> */}
 
         {/* Section 6: Manokamna Parchi */}
-        <div className="bg-gradient-to-r from-pink-50 to-pink-100 p-6 rounded-xl border border-pink-200 mb-6">
-          <h3 className="text-lg font-semibold text-pink-800 mb-4 font-['Philosopher'] flex items-center gap-2">
+        {/* <div className="bg-gradient-to-r from-pink-50 to-pink-100 p-6 rounded-xl border border-pink-200 mb-6">
+          <h3 className="text-lg font-semibold text-pink-800 mb-4   flex items-center gap-2">
             <span className="text-2xl">📜</span>
             6. Manokamna Parchi
           </h3>
@@ -407,11 +407,11 @@ const ViewPujaModal: React.FC<ViewPujaModalProps> = ({
               </label>
             </div>
           </div>
-        </div>
+        </div> */}
 
         {/* ✅ NEW: Section for Plan and Chadawa Information */}
         <div className="bg-gradient-to-r from-purple-50 to-purple-100 p-6 rounded-xl border border-purple-200 mb-6">
-          <h3 className="text-lg font-semibold text-purple-800 mb-4 font-['Philosopher'] flex items-center gap-2">
+          <h3 className="text-lg font-semibold text-purple-800 mb-4   flex items-center gap-2">
             <span className="text-2xl">📋</span>
             Associated Plans & Chadawas
           </h3>
@@ -435,7 +435,7 @@ const ViewPujaModal: React.FC<ViewPujaModalProps> = ({
 
         {/* Section 7: General Settings */}
         <div className="bg-gradient-to-r from-gray-50 to-gray-100 p-6 rounded-xl border border-gray-200 mb-6">
-          <h3 className="text-lg font-semibold text-gray-800 mb-4 font-['Philosopher'] flex items-center gap-2">
+          <h3 className="text-lg font-semibold text-gray-800 mb-4   flex items-center gap-2">
             <span className="text-2xl">⚙️</span>
             7. General Settings
           </h3>

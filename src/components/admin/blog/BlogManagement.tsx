@@ -48,7 +48,7 @@ const BlogManagement = () => {
           <div className="p-6">
             <div className="flex justify-between items-center mb-6">
               <div>
-                <h2 className="text-xl font-semibold text-gray-900 font-['Philosopher']">All Blogs</h2>
+                <h2 className="text-xl font-semibold text-gray-900  ">All Blogs</h2>
                 <p className="text-sm text-gray-600 mt-1">Manage your blog posts and content</p>
               </div>
               <div className="flex gap-3">
@@ -104,7 +104,7 @@ const BlogManagement = () => {
         {activeSubTab === 'add' && (
           <div className="p-6">
             <div className="mb-6">
-              <h2 className="text-xl font-semibold text-gray-900 font-['Philosopher']">Create New Blog</h2>
+              <h2 className="text-xl font-semibold text-gray-900  ">Create New Blog</h2>
               <p className="text-sm text-gray-600 mt-1">Create engaging blog content for your audience</p>
             </div>
             <div className="bg-white p-6 rounded-lg border border-gray-200">

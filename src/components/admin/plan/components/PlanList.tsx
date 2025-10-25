@@ -338,7 +338,7 @@ const PlanList: React.FC<PlanListProps> = ({ viewMode = 'grid' }) => {
               
               <div className="space-y-2">
                 <div className="flex justify-between items-start">
-                  <h4 className="font-semibold text-gray-900 text-lg font-['Philosopher'] leading-tight">{plan?.name ?? ''}</h4>
+                  <h4 className="font-semibold text-gray-900 text-lg   leading-tight">{plan?.name ?? ''}</h4>
                 </div>
                 
                 <p className="text-sm text-gray-600 line-clamp-2">{plan?.description ?? ''}</p>
@@ -463,7 +463,7 @@ const PlanList: React.FC<PlanListProps> = ({ viewMode = 'grid' }) => {
                           </div>
                         </div>
                         <div className="ml-4">
-                          <div className="text-sm font-medium text-gray-900 font-['Philosopher']">{plan?.name ?? ''}</div>
+                          <div className="text-sm font-medium text-gray-900  ">{plan?.name ?? ''}</div>
                           <div className="text-sm text-gray-600">{plan?.description ?? ''}</div>
                           <div className="text-xs text-gray-500">Created: {(() => {
                             try {

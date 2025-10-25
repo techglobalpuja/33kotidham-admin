@@ -166,7 +166,7 @@ const CreateChadawaForm: React.FC<CreateChadawaFormProps> = ({ onSuccess }) => {
     <Form form={form} onFinish={handleSubmit} layout="vertical" className="space-y-8">
       {/* Section 1: Chadawa Details */}
       <div className="bg-gradient-to-r from-orange-50 to-orange-100 p-6 rounded-xl border border-orange-200">
-        <h3 className="text-lg font-semibold text-orange-800 mb-4 font-['Philosopher'] flex items-center gap-2">
+        <h3 className="text-lg font-semibold text-orange-800 mb-4   flex items-center gap-2">
           <span className="text-2xl">🎁</span>
           1. Chadawa Details
         </h3>

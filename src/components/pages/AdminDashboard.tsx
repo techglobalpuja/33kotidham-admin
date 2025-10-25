@@ -31,7 +31,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = () => {
 
   // Mock admin stats data
   const adminStats: AdminStats = {
-    totalUsers: 12847,
+    totalUsers: 1247,
     totalPujas: 156,
     totalEarnings: 2847593,
     totalOrders: 3456,
@@ -106,22 +106,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = () => {
               </div>
             </div>
 
-            <div className="bg-white rounded-xl shadow-lg p-6 border border-orange-100">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-600">Total Pujas</p>
-                  <p className="text-2xl font-bold text-gray-900">{adminStats.totalPujas}</p>
-                  <p className={`text-sm ${getGrowthColor(adminStats.monthlyGrowth.pujas)}`}>
-                    +{adminStats.monthlyGrowth.pujas}% this month
-                  </p>
-                </div>
-                <div className="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center">
-                  <svg className="w-6 h-6 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-                  </svg>
-                </div>
-              </div>
-            </div>
+            
 
             <div className="bg-white rounded-xl shadow-lg p-6 border border-orange-100">
               <div className="flex items-center justify-between">
@@ -143,11 +128,73 @@ const AdminDashboard: React.FC<AdminDashboardProps> = () => {
             <div className="bg-white rounded-xl shadow-lg p-6 border border-orange-100">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-600">Total Orders</p>
+                  <p className="text-sm font-medium text-gray-600">Puja Bookings</p>
                   <p className="text-2xl font-bold text-gray-900">{adminStats.totalOrders.toLocaleString()}</p>
                   <p className={`text-sm ${getGrowthColor(adminStats.monthlyGrowth.orders)}`}>
                     +{adminStats.monthlyGrowth.orders}% this month
                   </p>
+                </div>
+                <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
+                  <svg className="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+                  </svg>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-xl shadow-lg p-6 border border-orange-100">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-600">Chadhawa Bookings</p>
+                  <p className="text-2xl font-bold text-gray-900">{adminStats.totalOrders.toLocaleString()}</p>
+                  <p className={`text-sm ${getGrowthColor(adminStats.monthlyGrowth.orders)}`}>
+                    +{adminStats.monthlyGrowth.orders}% this month
+                  </p>
+                </div>
+                <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
+                  <svg className="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+                  </svg>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-xl shadow-lg p-6 border border-orange-100">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-600">Total Pujas</p>
+                  <p className="text-2xl font-bold text-gray-900">{adminStats.totalPujas}</p>
+                  
+                </div>
+                <div className="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center">
+                  <svg className="w-6 h-6 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                  </svg>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-xl shadow-lg p-6 border border-orange-100">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-600">Total Blogs</p>
+                  <p className="text-2xl font-bold text-gray-900">{adminStats.totalOrders.toLocaleString()}</p>
+                  
+                </div>
+                <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
+                  <svg className="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+                  </svg>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-xl shadow-lg p-6 border border-orange-100">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-600">Chadhawa Items</p>
+                  <p className="text-2xl font-bold text-gray-900">{adminStats.totalOrders.toLocaleString()}</p>
+                  
                 </div>
                 <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
                   <svg className="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -186,7 +233,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = () => {
                 </div>
               </button>
               
-              <button
+              {/* <button
                 onClick={() => setActiveTab('products')}
                 className="p-4 bg-gradient-to-r from-emerald-100 to-emerald-200 rounded-lg hover:from-emerald-200 hover:to-emerald-300 transition-all duration-200 group"
               >
@@ -196,7 +243,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = () => {
                   </div>
                   <p className="text-sm font-medium text-gray-900">Add Product</p>
                 </div>
-              </button>
+              </button> */}
               
               <button
                 onClick={() => setActiveTab('chawada')}
@@ -206,7 +253,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = () => {
                   <div className="w-8 h-8 mx-auto mb-2 text-purple-600 group-hover:scale-110 transition-transform duration-200">
                     🛍️
                   </div>
-                  <p className="text-sm font-medium text-gray-900">Add Product</p>
+                  <p className="text-sm font-medium text-gray-900">Add Chadhawa</p>
                 </div>
               </button>
               
@@ -218,11 +265,11 @@ const AdminDashboard: React.FC<AdminDashboardProps> = () => {
                   <div className="w-8 h-8 mx-auto mb-2 text-blue-600 group-hover:scale-110 transition-transform duration-200">
                     👥
                   </div>
-                  <p className="text-sm font-medium text-gray-900">Manage Users</p>
+                  <p className="text-sm font-medium text-gray-900">Check Bookings</p>
                 </div>
               </button>
               
-              <button
+              {/* <button
                 onClick={() => setActiveTab('content')}
                 className="p-4 bg-gradient-to-r from-green-100 to-green-200 rounded-lg hover:from-green-200 hover:to-green-300 transition-all duration-200 group"
               >
@@ -232,7 +279,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = () => {
                   </div>
                   <p className="text-sm font-medium text-gray-900">Upload Content</p>
                 </div>
-              </button>
+              </button> */}
             </div>
           </div>
         </div>

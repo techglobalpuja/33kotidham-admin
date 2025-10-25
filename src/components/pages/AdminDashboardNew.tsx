@@ -19,7 +19,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = () => {
 
   // Mock admin stats data
   const adminStats: AdminStats = {
-    totalUsers: 12847,
+    totalUsers: 1284,
     totalPujas: 156,
     totalEarnings: 2847593,
     totalOrders: 3456,

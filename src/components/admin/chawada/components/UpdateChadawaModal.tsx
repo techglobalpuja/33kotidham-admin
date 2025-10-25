@@ -194,7 +194,7 @@ const UpdateChadawaModal: React.FC<UpdateChadawaModalProps> = ({
       title={
         <div className="flex items-center gap-2">
           <span className="text-2xl">🎁</span>
-          <span className="font-['Philosopher'] text-xl">Update Chadawa</span>
+          <span className="  text-xl">Update Chadawa</span>
         </div>
       }
       open={visible}
@@ -207,7 +207,7 @@ const UpdateChadawaModal: React.FC<UpdateChadawaModalProps> = ({
       <Form form={form} onFinish={handleSubmit} layout="vertical" className="space-y-6">
         <div className="max-h-[70vh] overflow-y-auto pr-2">
           <div className="bg-gradient-to-r from-orange-50 to-orange-100 p-6 rounded-xl border border-orange-200">
-            <h3 className="text-lg font-semibold text-orange-800 mb-4 font-['Philosopher'] flex items-center gap-2">
+            <h3 className="text-lg font-semibold text-orange-800 mb-4   flex items-center gap-2">
               <span className="text-2xl">🎁</span>
               Chadawa Details
             </h3>

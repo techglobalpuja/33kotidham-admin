@@ -212,7 +212,7 @@ const UpdatePlanModal: React.FC<UpdatePlanModalProps> = ({
       title={
         <div className="flex items-center gap-2">
           <span className="text-2xl">📋</span>
-          <span className="font-['Philosopher'] text-xl">Update Plan</span>
+          <span className="  text-xl">Update Plan</span>
         </div>
       }
       open={visible}
@@ -226,7 +226,7 @@ const UpdatePlanModal: React.FC<UpdatePlanModalProps> = ({
         <div className="max-h-[70vh] overflow-y-auto pr-2">
           {/* Plan Details */}
           <div className="bg-gradient-to-r from-purple-50 to-purple-100 p-6 rounded-xl border border-purple-200 mb-6">
-            <h3 className="text-lg font-semibold text-purple-800 mb-4 font-['Philosopher'] flex items-center gap-2">
+            <h3 className="text-lg font-semibold text-purple-800 mb-4   flex items-center gap-2">
               <span className="text-2xl">📋</span>
               Plan Details
             </h3>

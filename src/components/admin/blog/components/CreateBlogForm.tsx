@@ -274,7 +274,7 @@ const CreateBlogForm: React.FC<CreateBlogFormProps> = ({ onSuccess }) => {
       
       {/* Section 1: Blog Details */}
       <div className="bg-gradient-to-r from-blue-50 to-blue-100 p-6 rounded-xl border border-blue-200">
-        <h3 className="text-lg font-semibold text-blue-800 mb-4 font-['Philosopher'] flex items-center gap-2">
+        <h3 className="text-lg font-semibold text-blue-800 mb-4   flex items-center gap-2">
           <span className="text-2xl">📝</span>
           1. Blog Details
         </h3>
@@ -410,7 +410,7 @@ const CreateBlogForm: React.FC<CreateBlogFormProps> = ({ onSuccess }) => {
 
       {/* Section 2: Content */}
       <div className="bg-gradient-to-r from-green-50 to-green-100 p-6 rounded-xl border border-green-200">
-        <h3 className="text-lg font-semibold text-green-800 mb-4 font-['Philosopher'] flex items-center gap-2">
+        <h3 className="text-lg font-semibold text-green-800 mb-4   flex items-center gap-2">
           <span className="text-2xl">✍️</span>
           2. Content
         </h3>
@@ -440,7 +440,7 @@ const CreateBlogForm: React.FC<CreateBlogFormProps> = ({ onSuccess }) => {
 
       {/* Section 3: SEO & Metadata */}
       <div className="bg-gradient-to-r from-purple-50 to-purple-100 p-6 rounded-xl border border-purple-200">
-        <h3 className="text-lg font-semibold text-purple-800 mb-4 font-['Philosopher'] flex items-center gap-2">
+        <h3 className="text-lg font-semibold text-purple-800 mb-4   flex items-center gap-2">
           <span className="text-2xl">🔍</span>
           3. SEO & Metadata
         </h3>
@@ -517,7 +517,7 @@ const CreateBlogForm: React.FC<CreateBlogFormProps> = ({ onSuccess }) => {
 
       {/* Section 4: Settings */}
       <div className="bg-gradient-to-r from-gray-50 to-gray-100 p-6 rounded-xl border border-gray-200">
-        <h3 className="text-lg font-semibold text-gray-800 mb-4 font-['Philosopher'] flex items-center gap-2">
+        <h3 className="text-lg font-semibold text-gray-800 mb-4   flex items-center gap-2">
           <span className="text-2xl">⚙️</span>
           4. Settings
         </h3>

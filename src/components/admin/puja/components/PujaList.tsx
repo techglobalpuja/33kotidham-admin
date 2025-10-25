@@ -511,11 +511,11 @@ const PujaList: React.FC<PujaListProps> = ({ viewMode = 'grid' }) => {
               
               <div className="space-y-2">
                 <div className="flex justify-between items-start">
-                  <h4 className="font-semibold text-gray-900 text-lg font-['Philosopher'] leading-tight">{puja?.pujaName ?? ''}</h4>
-                  <div className="text-right">
+                  <h4 className="font-semibold text-gray-900 text-lg leading-tight">{puja?.pujaName ?? ''}</h4>
+                  {/* <div className="text-right">
                     <div className="text-xs text-gray-500">Dakshina</div>
                     <span className="text-orange-600 font-bold text-lg">{formatCurrency(puja?.dakshinaPrice)}</span>
-                  </div>
+                  </div> */}
                 </div>
                 
                 <p className="text-sm text-orange-600 font-medium">{puja?.subHeading ?? ''}</p>
@@ -537,7 +537,7 @@ const PujaList: React.FC<PujaListProps> = ({ viewMode = 'grid' }) => {
                 <p className="text-sm text-gray-600 line-clamp-2">{puja?.about ?? ''}</p>
                 
                 {/* Pricing Details */}
-                <div className="grid grid-cols-3 gap-2 text-xs border-t pt-2 mt-3">
+                {/* <div className="grid grid-cols-3 gap-2 text-xs border-t pt-2 mt-3">
                   <div className="text-center">
                     <div className="text-gray-500">Prasad</div>
                     <div className="font-medium text-green-600">{formatCurrency(puja?.prasadPrice)}</div>
@@ -550,7 +550,7 @@ const PujaList: React.FC<PujaListProps> = ({ viewMode = 'grid' }) => {
                     <div className="text-gray-500">Manokamna</div>
                     <div className="font-medium text-purple-600">{formatCurrency(puja?.manokamnaPrice)}</div>
                   </div>
-                </div>
+                </div> */}
                 
                 <div className="text-xs text-gray-500 border-t pt-2 mt-3">
                   Created: {(() => {
@@ -670,7 +670,7 @@ const PujaList: React.FC<PujaListProps> = ({ viewMode = 'grid' }) => {
                           </div>
                         </div>
                         <div className="ml-4">
-                          <div className="text-sm font-medium text-gray-900 font-['Philosopher']">{puja?.pujaName ?? ''}</div>
+                          <div className="text-sm font-medium text-gray-900">{puja?.pujaName ?? ''}</div>
                           <div className="text-sm text-orange-600">{puja?.subHeading ?? ''}</div>
                           <div className="text-xs text-gray-500">Created: {(() => {
                             try {
@@ -705,7 +705,7 @@ const PujaList: React.FC<PujaListProps> = ({ viewMode = 'grid' }) => {
                         </div>
                       </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
+                    {/* <td className="px-6 py-4 whitespace-nowrap">
                       <div className="space-y-1">
                         <div className="flex justify-between text-xs">
                           <span className="text-gray-500">Prasad:</span>
@@ -720,7 +720,7 @@ const PujaList: React.FC<PujaListProps> = ({ viewMode = 'grid' }) => {
                           <span className="font-medium text-purple-600">{formatCurrency(puja?.manokamnaPrice)}</span>
                         </div>
                       </div>
-                    </td>
+                    </td> */}
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex flex-col space-y-1">
                         <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${

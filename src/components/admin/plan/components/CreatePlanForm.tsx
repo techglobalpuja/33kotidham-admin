@@ -137,7 +137,7 @@ const CreatePlanForm: React.FC<CreatePlanFormProps> = ({ onSuccess }) => {
     <Form form={form} onFinish={handleSubmit} layout="vertical" className="space-y-8">
       {/* Section 1: Plan Details */}
       <div className="bg-gradient-to-r from-purple-50 to-purple-100 p-6 rounded-xl border border-purple-200">
-        <h3 className="text-lg font-semibold text-purple-800 mb-4 font-['Philosopher'] flex items-center gap-2">
+        <h3 className="text-lg font-semibold text-purple-800 mb-4   flex items-center gap-2">
           <span className="text-2xl">📋</span>
           1. Plan Details
         </h3>

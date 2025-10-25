@@ -65,7 +65,7 @@ const ViewChadawaModal: React.FC<ViewChadawaModalProps> = ({
       title={
         <div className="flex items-center gap-2">
           <span className="text-2xl">🎁</span>
-          <span className="font-['Philosopher'] text-xl">View Chadawa Details</span>
+          <span className="  text-xl">View Chadawa Details</span>
         </div>
       }
       open={visible}
@@ -78,7 +78,7 @@ const ViewChadawaModal: React.FC<ViewChadawaModalProps> = ({
       <div className="max-h-[70vh] overflow-y-auto pr-2">
         {/* Chadawa Header Info */}
         <div className="bg-white p-4 rounded-lg mb-6 border border-orange-200 shadow-sm">
-          <h4 className="font-medium text-orange-800 text-lg font-['Philosopher']">
+          <h4 className="font-medium text-orange-800 text-lg  ">
             {safeData.name}
           </h4>
           <p className="text-sm text-orange-600">ID: {safeData.id}</p>
@@ -86,7 +86,7 @@ const ViewChadawaModal: React.FC<ViewChadawaModalProps> = ({
 
         {/* Chadawa Details */}
         <div className="bg-gradient-to-r from-orange-50 to-orange-100 p-6 rounded-xl border border-orange-200 mb-6">
-          <h3 className="text-lg font-semibold text-orange-800 mb-4 font-['Philosopher'] flex items-center gap-2">
+          <h3 className="text-lg font-semibold text-orange-800 mb-4   flex items-center gap-2">
             <span className="text-2xl">🎁</span>
             Chadawa Details
           </h3>

@@ -287,7 +287,7 @@ const ChadawaList: React.FC<ChadawaListProps> = ({ viewMode = 'grid' }) => {
               
               <div className="space-y-2">
                 <div className="flex justify-between items-start">
-                  <h4 className="font-semibold text-gray-900 text-lg font-['Philosopher'] leading-tight">{chadawa.name}</h4>
+                  <h4 className="font-semibold text-gray-900 text-lg leading-tight">{chadawa.name}</h4>
                   <span className="text-orange-600 font-bold text-lg">{formatCurrency(chadawa.price)}</span>
                 </div>
                 
@@ -394,7 +394,7 @@ const ChadawaList: React.FC<ChadawaListProps> = ({ viewMode = 'grid' }) => {
                           </div>
                         </div>
                         <div className="ml-4">
-                          <div className="text-sm font-medium text-gray-900 font-['Philosopher']">{chadawa.name}</div>
+                          <div className="text-sm font-medium text-gray-900">{chadawa.name}</div>
                         </div>
                       </div>
                     </td>

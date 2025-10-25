@@ -300,7 +300,7 @@ const CreatePujaForm: React.FC<CreatePujaFormProps> = ({ onSuccess }) => {
     <Form form={form} onFinish={handleSubmit} layout="vertical" className="space-y-8">
       {/* Section 1: Puja Details */}
       <div className="bg-gradient-to-r from-orange-50 to-orange-100 p-6 rounded-xl border border-orange-200">
-        <h3 className="text-lg font-semibold text-orange-800 mb-4 font-['Philosopher'] flex items-center gap-2">
+        <h3 className="text-lg font-semibold text-orange-800 mb-4   flex items-center gap-2">
           <span className="text-2xl">🛕</span>
           1. Puja Details
         </h3>
@@ -475,7 +475,7 @@ const CreatePujaForm: React.FC<CreatePujaFormProps> = ({ onSuccess }) => {
 
       {/* Section 2: Temple Details */}
       <div className="bg-gradient-to-r from-indigo-50 to-indigo-100 p-6 rounded-xl border border-indigo-200">
-        <h3 className="text-lg font-semibold text-indigo-800 mb-4 font-['Philosopher'] flex items-center gap-2">
+        <h3 className="text-lg font-semibold text-indigo-800 mb-4   flex items-center gap-2">
           <span className="text-2xl">🏦</span>
           2. Temple Details
         </h3>
@@ -561,7 +561,7 @@ const CreatePujaForm: React.FC<CreatePujaFormProps> = ({ onSuccess }) => {
 
       {/* Section 3: Puja Benefits */}
       <div className="bg-gradient-to-r from-green-50 to-green-100 p-6 rounded-xl border border-green-200">
-        <h3 className="text-lg font-semibold text-green-800 mb-4 font-['Philosopher'] flex items-center gap-2">
+        <h3 className="text-lg font-semibold text-green-800 mb-4   flex items-center gap-2">
           <span className="text-2xl">✨</span>
           3. Puja Benefits
         </h3>
@@ -601,7 +601,7 @@ const CreatePujaForm: React.FC<CreatePujaFormProps> = ({ onSuccess }) => {
 
       {/* Section 4: Plan Details - UPDATED FOR NUMBERS */}
       <div className="bg-gradient-to-r from-purple-50 to-purple-100 p-6 rounded-xl border border-purple-200">
-        <h3 className="text-lg font-semibold text-purple-800 mb-4 font-['Philosopher'] flex items-center gap-2">
+        <h3 className="text-lg font-semibold text-purple-800 mb-4   flex items-center gap-2">
           <span className="text-2xl">📋</span>
           4. Plan Details
         </h3>
@@ -641,7 +641,7 @@ const CreatePujaForm: React.FC<CreatePujaFormProps> = ({ onSuccess }) => {
 
       {/* ✅ NEW: Section for Chadawa Selection */}
       <div className="bg-gradient-to-r from-teal-50 to-teal-100 p-6 rounded-xl border border-teal-200">
-        <h3 className="text-lg font-semibold text-teal-800 mb-4 font-['Philosopher'] flex items-center gap-2">
+        <h3 className="text-lg font-semibold text-teal-800 mb-4   flex items-center gap-2">
           <span className="text-2xl">📿</span>
           Chadawa Selection
         </h3>
@@ -680,8 +680,8 @@ const CreatePujaForm: React.FC<CreatePujaFormProps> = ({ onSuccess }) => {
       </div>
 
       {/* Section 5: Prasad */}
-      <div className="bg-gradient-to-r from-yellow-50 to-yellow-100 p-6 rounded-xl border border-yellow-200">
-        <h3 className="text-lg font-semibold text-yellow-800 mb-4 font-['Philosopher'] flex items-center gap-2">
+      {/* <div className="bg-gradient-to-r from-yellow-50 to-yellow-100 p-6 rounded-xl border border-yellow-200">
+        <h3 className="text-lg font-semibold text-yellow-800 mb-4   flex items-center gap-2">
           <span className="text-2xl">🍯</span>
           5. Prasad
         </h3>
@@ -710,11 +710,11 @@ const CreatePujaForm: React.FC<CreatePujaFormProps> = ({ onSuccess }) => {
             </Checkbox>
           </Form.Item>
         </div>
-      </div>
+      </div> */}
 
       {/* Section 6: Dakshina */}
-      <div className="bg-gradient-to-r from-red-50 to-red-100 p-6 rounded-xl border border-red-200">
-        <h3 className="text-lg font-semibold text-red-800 mb-4 font-['Philosopher'] flex items-center gap-2">
+      {/* <div className="bg-gradient-to-r from-red-50 to-red-100 p-6 rounded-xl border border-red-200">
+        <h3 className="text-lg font-semibold text-red-800 mb-4   flex items-center gap-2">
           <span className="text-2xl">💰</span>
           6. Dakshina
         </h3>
@@ -763,11 +763,11 @@ const CreatePujaForm: React.FC<CreatePujaFormProps> = ({ onSuccess }) => {
             <span className="text-red-600">No automatic conversion - you can manually set both INR and USD prices</span>
           </Text>
         </div>
-      </div>
+      </div> */}
 
       {/* Section 7: Manokamna Parchi */}
-      <div className="bg-gradient-to-r from-pink-50 to-pink-100 p-6 rounded-xl border border-pink-200">
-        <h3 className="text-lg font-semibold text-pink-800 mb-4 font-['Philosopher'] flex items-center gap-2">
+      {/* <div className="bg-gradient-to-r from-pink-50 to-pink-100 p-6 rounded-xl border border-pink-200">
+        <h3 className="text-lg font-semibold text-pink-800 mb-4   flex items-center gap-2">
           <span className="text-2xl">📜</span>
           7. Manokamna Parchi
         </h3>
@@ -819,11 +819,11 @@ const CreatePujaForm: React.FC<CreatePujaFormProps> = ({ onSuccess }) => {
             </span>
           </Text>
         </div>
-      </div>
+      </div> */}
 
       {/* Section 8: General Settings */}
       <div className="bg-gradient-to-r from-gray-50 to-gray-100 p-6 rounded-xl border border-gray-200">
-        <h3 className="text-lg font-semibold text-gray-800 mb-4 font-['Philosopher'] flex items-center gap-2">
+        <h3 className="text-lg font-semibold text-gray-800 mb-4   flex items-center gap-2">
           <span className="text-2xl">⚙️</span>
           General Settings
         </h3>
