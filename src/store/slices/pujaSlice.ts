@@ -121,8 +121,8 @@ export const updatePuja = createAsyncThunk(
     category: string[];
     is_active: boolean;
     is_featured: boolean;
-    benefits: Benefit[];
-    selected_plan_ids: number[];
+    benefits: Array<{benefit_title: string; benefit_description: string}>;  // ✅ Changed to match API format
+    plan_ids: number[];  // ✅ Changed from selected_plan_ids to plan_ids
     chadawa_ids: number[]; // ✅ NEW: chadawa_ids field
   }, { rejectWithValue }) => {
     try {

@@ -123,6 +123,14 @@ const UpdatePujaModal: React.FC<UpdatePujaModalProps> = ({
         console.log('Setting form data from pujaData:', pujaData);
         
         let safeSelectedPlanIds: number[] = [];
+        console.log('Processing plan IDs from pujaData:', { 
+          selected_plan_ids: pujaData.selected_plan_ids, 
+          plan_ids: pujaData.plan_ids,
+          type_selected: typeof pujaData.selected_plan_ids,
+          type_plan: typeof pujaData.plan_ids
+        });
+        
+        // Handle different possible formats for plan IDs
         if (Array.isArray(pujaData.selected_plan_ids)) {
           safeSelectedPlanIds = pujaData.selected_plan_ids
             .filter((id: any) => id != null && !isNaN(Number(id)))
@@ -131,14 +139,52 @@ const UpdatePujaModal: React.FC<UpdatePujaModalProps> = ({
           safeSelectedPlanIds = pujaData.plan_ids
             .filter((id: any) => id != null && !isNaN(Number(id)))
             .map((id: any) => Number(id));
+        } else if (typeof pujaData.selected_plan_ids === 'string') {
+          // Handle string format like "[7,5,6]"
+          try {
+            const parsed = JSON.parse(pujaData.selected_plan_ids);
+            if (Array.isArray(parsed)) {
+              safeSelectedPlanIds = parsed
+                .filter((id: any) => id != null && !isNaN(Number(id)))
+                .map((id: any) => Number(id));
+            }
+          } catch (e) {
+            // If JSON parsing fails, try to extract numbers from string
+            const matches = pujaData.selected_plan_ids.match(/\d+/g);
+            if (matches) {
+              safeSelectedPlanIds = matches
+                .map(Number)
+                .filter((id: number) => !isNaN(id));
+            }
+          }
         }
+        
+        console.log('Processed safeSelectedPlanIds:', safeSelectedPlanIds);
 
-        // ✅ NEW: Handle chadawa_ids
+        // ✅ NEW: Handle chadawas (array of chadawa objects)
         let safeSelectedChadawaIds: number[] = [];
-        if (Array.isArray(pujaData.chadawa_ids)) {
-          safeSelectedChadawaIds = pujaData.chadawa_ids
-            .filter((id: any) => id != null && !isNaN(Number(id)))
-            .map((id: any) => Number(id));
+        console.log('Processing chadawas from pujaData:', { 
+          chadawas: pujaData.chadawas, 
+          type: typeof pujaData.chadawas 
+        });
+        
+        if (Array.isArray(pujaData.chadawas)) {
+          console.log('Found chadawas array:', pujaData.chadawas);
+          // Extract IDs from chadawa objects
+          safeSelectedChadawaIds = pujaData.chadawas
+            .filter((chadawa: any) => {
+              const isValid = chadawa && chadawa.id != null && !isNaN(Number(chadawa.id));
+              console.log('Chadawa filter check:', { chadawa, isValid, id: chadawa?.id });
+              return isValid;
+            })
+            .map((chadawa: any) => {
+              const id = Number(chadawa.id);
+              console.log('Extracting ID from chadawa:', { chadawa, extractedId: id });
+              return id;
+            });
+          console.log('Extracted chadawa IDs:', safeSelectedChadawaIds);
+        } else {
+          console.log('No chadawas array found in pujaData');
         }
 
         // Handle category data - could be array or comma-separated string
@@ -242,6 +288,7 @@ const UpdatePujaModal: React.FC<UpdatePujaModalProps> = ({
           isFeatured: Boolean(pujaData.is_featured ?? false),
         };
 
+        console.log('Prepared newFormData:', newFormData);
         setFormData(newFormData);
         setImagesChanged(false);
         
@@ -253,39 +300,59 @@ const UpdatePujaModal: React.FC<UpdatePujaModalProps> = ({
             : ['general'];
         
         console.log('Setting form fields with categoryValue:', categoryValue);
+        console.log('Setting form fields with selectedPlanIds:', newFormData.selectedPlanIds);
+        console.log('Setting form fields with selectedChadawaIds:', newFormData.selectedChadawaIds);
         
-        // Set form fields
-        form.setFieldsValue({
-          pujaName: newFormData.pujaName,
-          subHeading: newFormData.subHeading,
-          about: newFormData.about,
-          templeAddress: newFormData.templeAddress,
-          templeDescription: newFormData.templeDescription,
-          selectedPlanIds: newFormData.selectedPlanIds,
-          selectedChadawaIds: newFormData.selectedChadawaIds, // ✅ NEW: chadawa IDs
-          date: newFormData.date, // ✅ CHANGED: just date
-          time: newFormData.time, // ✅ CHANGED: just time
-          prasadPrice: newFormData.prasadPrice,
-          prasadStatus: newFormData.prasadStatus,
-          dakshinaPrices: newFormData.dakshinaPrices,
-          dakshinaPricesUSD: newFormData.dakshinaPricesUSD,
-          dakshinaStatus: newFormData.dakshinaStatus,
-          manokamnaPrices: newFormData.manokamnaPrices,
-          manokamnaPricesUSD: newFormData.manokamnaPricesUSD,
-          manokamnaStatus: newFormData.manokamnaStatus,
-          category: categoryValue,
-          isActive: newFormData.isActive,
-          isFeatured: newFormData.isFeatured,
-          benefits: (newFormData.benefits as Array<{title: string, description: string}>).map((benefit, index) => ({
-            title: benefit.title,
-            description: benefit.description
-          }))
-        });
+        // Set form fields with multiple attempts to ensure they're set
+        const setFormValues = () => {
+          form.setFieldsValue({
+            pujaName: newFormData.pujaName,
+            subHeading: newFormData.subHeading,
+            about: newFormData.about,
+            templeAddress: newFormData.templeAddress,
+            templeDescription: newFormData.templeDescription,
+            selectedPlanIds: newFormData.selectedPlanIds,
+            selectedChadawaIds: newFormData.selectedChadawaIds, // ✅ NEW: chadawa IDs
+            date: newFormData.date, // ✅ CHANGED: just date
+            time: newFormData.time, // ✅ CHANGED: just time
+            prasadPrice: newFormData.prasadPrice,
+            prasadStatus: newFormData.prasadStatus,
+            dakshinaPrices: newFormData.dakshinaPrices,
+            dakshinaPricesUSD: newFormData.dakshinaPricesUSD,
+            dakshinaStatus: newFormData.dakshinaStatus,
+            manokamnaPrices: newFormData.manokamnaPrices,
+            manokamnaPricesUSD: newFormData.manokamnaPricesUSD,
+            manokamnaStatus: newFormData.manokamnaStatus,
+            category: categoryValue,
+            isActive: newFormData.isActive,
+            isFeatured: newFormData.isFeatured,
+            benefits: (newFormData.benefits as Array<{title: string, description: string}>).map((benefit, index) => ({
+              title: benefit.title,
+              description: benefit.description
+            }))
+          });
+          
+          // Also update the form data state directly to ensure UI updates
+          setFormData(prev => ({
+            ...prev,
+            selectedChadawaIds: newFormData.selectedChadawaIds
+          }));
+          
+          console.log('✅ Form data set successfully:', {
+            planIds: newFormData.selectedPlanIds,
+            chadawaIds: newFormData.selectedChadawaIds,
+            imagesCount: newFormData.images?.length || 0
+          });
+        };
         
-        console.log('✅ Form data set successfully:', {
-          planIds: newFormData.selectedPlanIds,
-          imagesCount: newFormData.images?.length || 0
-        });
+        // Try setting form values immediately
+        setFormValues();
+        
+        // Also try after a small delay to handle any timing issues
+        setTimeout(setFormValues, 50);
+        setTimeout(setFormValues, 100);
+        setTimeout(setFormValues, 200);
+        
       } catch (error) {
         console.error('Error setting form data:', error);
       }
@@ -378,13 +445,23 @@ const UpdatePujaModal: React.FC<UpdatePujaModalProps> = ({
             break;
           case 'selectedPlanIds':
             safeValue = Array.isArray(value) 
-              ? value.filter(v => v != null).map((v: string) => parseInt(v, 10)).filter(id => !isNaN(id))
+              ? value.filter(v => v != null).map((v: string | number) => {
+                  // Handle both string and number values
+                  const num = typeof v === 'string' ? parseInt(v, 10) : v;
+                  return isNaN(num) ? 0 : num;
+                }).filter(id => id !== 0)
               : [];
+            console.log('Processed selectedPlanIds:', safeValue);
             break;
           case 'selectedChadawaIds': // ✅ NEW: handle chadawa IDs
             safeValue = Array.isArray(value) 
-              ? value.filter(v => v != null).map((v: string) => parseInt(v, 10)).filter(id => !isNaN(id))
+              ? value.filter(v => v != null).map((v: string | number) => {
+                  // Handle both string and number values
+                  const num = typeof v === 'string' ? parseInt(v, 10) : v;
+                  return isNaN(num) ? 0 : num;
+                }).filter(id => id !== 0)
               : [];
+            console.log('Processed selectedChadawaIds:', safeValue);
             break;
           case 'category':
             console.log('Handling category input change:', { value, typeof: typeof value });
@@ -566,11 +643,11 @@ const UpdatePujaModal: React.FC<UpdatePujaModalProps> = ({
         manokamna_prices_usd: (formData.manokamnaPricesUSD ?? '').trim(),
         is_manokamna_active: Boolean(formData.manokamnaStatus ?? false),
         category: categoryArray,
-        selected_plan_ids: formData.selectedPlanIds ?? [], // ✅ Keep as is
+        plan_ids: formData.selectedPlanIds ?? [], // ✅ Changed from selected_plan_ids to plan_ids
         chadawa_ids: formData.selectedChadawaIds ?? [], // ✅ NEW: chadawa IDs
         is_active: Boolean(formData.isActive ?? true),
         is_featured: Boolean(formData.isFeatured ?? false),
-      } as any;
+      };
       
       console.log("✅ Calling updatePuja with:", requestData);
       
@@ -951,7 +1028,10 @@ const UpdatePujaModal: React.FC<UpdatePujaModalProps> = ({
               <Select
                 mode="multiple"
                 value={formData.selectedPlanIds ?? []}
-                onChange={(value) => handleInputChange('selectedPlanIds', value ?? [])}
+                onChange={(value) => {
+                  console.log('Plan selection changed:', value);
+                  handleInputChange('selectedPlanIds', value ?? []);
+                }}
                 placeholder="Select plans"
                 loading={plansLoading}
                 className="w-full"
@@ -1106,8 +1186,10 @@ const UpdatePujaModal: React.FC<UpdatePujaModalProps> = ({
             >
               <Select
                 mode="multiple"
-                value={formData.selectedChadawaIds ?? []}
-                onChange={(value) => handleInputChange('selectedChadawaIds', value ?? [])}
+                value={formData.selectedChadawaIds || []}
+                onChange={(value) => {
+                  handleInputChange('selectedChadawaIds', value ?? []);
+                }}
                 placeholder="Select chadawas"
                 loading={chadawasLoading}
                 className="w-full"
