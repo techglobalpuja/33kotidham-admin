@@ -7,7 +7,7 @@ import { createPuja, uploadPujaImages } from '@/store/slices/pujaSlice';
 import { fetchPlans } from '@/store/slices/planSlice';
 import { fetchChadawas } from '@/store/slices/chadawaSlice';
 import { AppDispatch, RootState } from '@/store';
-import { Form, Input, Button, Checkbox, Select, Typography } from 'antd';
+import { Form, Input, Button, Checkbox, Select, Typography, message } from 'antd';
 import { useDropzone } from 'react-dropzone';
 
 const { Text } = Typography;
@@ -92,9 +92,23 @@ const CreatePujaForm: React.FC<CreatePujaFormProps> = ({ onSuccess }) => {
     isFeatured: false,
   });
 
+  // Initialize form values when component mounts
+  useEffect(() => {
+    form.setFieldsValue({
+      isActive: true,
+      isFeatured: false,
+      category: ['general']
+    });
+  }, [form]);
+
+  console.log('formData', formData)
   // Dropzone for Puja Images
-  const { getRootProps: getPujaRootProps, getInputProps: getPujaInputProps } = useDropzone({
-    accept: { 'image/*': [] },
+  const { getRootProps: getPujaRootProps, getInputProps: getPujaInputProps, isDragActive } = useDropzone({
+    accept: {
+      'image/jpeg': [],
+      'image/png': [],
+      'image/jpg': []
+    },
     multiple: true,
     maxFiles: 6,
     maxSize: 10 * 1024 * 1024,
@@ -103,11 +117,11 @@ const CreatePujaForm: React.FC<CreatePujaFormProps> = ({ onSuccess }) => {
         rejectedFiles.forEach(({ file, errors }) => {
           errors.forEach(error => {
             if (error.code === 'file-too-large') {
-              console.error(`File ${file.name} is too large. Maximum size is 10MB.`);
+              message.error(`File ${file.name} is too large. Maximum size is 10MB.`);
             } else if (error.code === 'file-invalid-type') {
-              console.error(`File ${file.name} has invalid type. Only images are allowed.`);
+              message.error(`File ${file.name} has invalid type. Only JPEG, PNG are allowed.`);
             } else if (error.code === 'too-many-files') {
-              console.error('Too many files. Maximum 6 images allowed.');
+              message.error('Cannot upload more than 6 images.');
             }
           });
         });
@@ -118,9 +132,9 @@ const CreatePujaForm: React.FC<CreatePujaFormProps> = ({ onSuccess }) => {
         const totalImages = currentImages.length + acceptedFiles.length;
         
         if (totalImages > 6) {
+          message.warning(`Cannot upload more than 6 images. You can add ${6 - currentImages.length} more images.`);
           const allowedCount = 6 - currentImages.length;
           const filesToAdd = acceptedFiles.slice(0, allowedCount);
-          console.warn(`Only ${allowedCount} more images can be added. Total limit is 6.`);
           handleInputChange('pujaImages', [...currentImages, ...filesToAdd]);
         } else {
           handleInputChange('pujaImages', [...currentImages, ...acceptedFiles]);
@@ -131,7 +145,11 @@ const CreatePujaForm: React.FC<CreatePujaFormProps> = ({ onSuccess }) => {
 
   // Dropzone for Temple Image
   const { getRootProps: getTempleRootProps, getInputProps: getTempleInputProps } = useDropzone({
-    accept: { 'image/*': [] },
+    accept: {
+      'image/jpeg': [],
+      'image/png': [],
+      'image/jpg': []
+    },
     multiple: false,
     maxSize: 10 * 1024 * 1024,
     onDrop: (acceptedFiles, rejectedFiles) => {
@@ -139,9 +157,9 @@ const CreatePujaForm: React.FC<CreatePujaFormProps> = ({ onSuccess }) => {
         rejectedFiles.forEach(({ file, errors }) => {
           errors.forEach(error => {
             if (error.code === 'file-too-large') {
-              console.error(`File ${file.name} is too large. Maximum size is 10MB.`);
+              message.error(`File ${file.name} is too large. Maximum size is 10MB.`);
             } else if (error.code === 'file-invalid-type') {
-              console.error(`File ${file.name} has invalid type. Only images are allowed.`);
+              message.error(`File ${file.name} has invalid type. Only JPEG, PNG are allowed.`);
             }
           });
         });
@@ -297,7 +315,17 @@ const CreatePujaForm: React.FC<CreatePujaFormProps> = ({ onSuccess }) => {
   };
 
   return (
-    <Form form={form} onFinish={handleSubmit} layout="vertical" className="space-y-8">
+    <Form 
+      form={form} 
+      onFinish={handleSubmit} 
+      layout="vertical" 
+      className="space-y-8"
+      initialValues={{
+        isActive: true,
+        isFeatured: false,
+        category: ['general']
+      }}
+    >
       {/* Section 1: Puja Details */}
       <div className="bg-gradient-to-r from-orange-50 to-orange-100 p-6 rounded-xl border border-orange-200">
         <h3 className="text-lg font-semibold text-orange-800 mb-4   flex items-center gap-2">
@@ -832,11 +860,12 @@ const CreatePujaForm: React.FC<CreatePujaFormProps> = ({ onSuccess }) => {
           <Form.Item
             name="category"
             label={<span className="block text-sm font-medium text-gray-700 mb-2">Categories (Multiple Selection)</span>}
+            initialValue={['general']}
           >
             <Select
               mode="multiple"
-              value={formData.category ?? ['general']}
-              onChange={(value) => handleInputChange('category', value ?? ['general'])}
+              value={formData.category}
+              onChange={(value) => handleInputChange('category', value)}
               placeholder="Select categories"
               className="w-full"
               dropdownClassName="border border-gray-200 rounded-lg"
@@ -861,20 +890,28 @@ const CreatePujaForm: React.FC<CreatePujaFormProps> = ({ onSuccess }) => {
           </Form.Item>
 
           <div className="flex items-center gap-6 mt-8">
-            <Form.Item name="isActive" valuePropName="checked">
+            <Form.Item 
+              name="isActive" 
+              valuePropName="checked"
+              initialValue={true}
+            >
               <Checkbox
-                checked={formData.isActive ?? true}
-                onChange={(e) => handleInputChange('isActive', e.target.checked ?? true)}
+                checked={formData.isActive}
+                onChange={(e) => handleInputChange('isActive', e.target.checked)}
                 className="flex items-center gap-2 text-sm font-medium text-gray-700"
               >
                 Active
               </Checkbox>
             </Form.Item>
 
-            <Form.Item name="isFeatured" valuePropName="checked">
+            <Form.Item 
+              name="isFeatured" 
+              valuePropName="checked"
+              initialValue={false}
+            >
               <Checkbox
-                checked={formData.isFeatured ?? false}
-                onChange={(e) => handleInputChange('isFeatured', e.target.checked ?? false)}
+                checked={formData.isFeatured}
+                onChange={(e) => handleInputChange('isFeatured', e.target.checked)}
                 className="flex items-center gap-2 text-sm font-medium text-gray-700"
               >
                 Featured
@@ -928,6 +965,12 @@ const CreatePujaForm: React.FC<CreatePujaFormProps> = ({ onSuccess }) => {
                 isFeatured: false,
               });
               form.resetFields();
+              // Set the default values after reset
+              form.setFieldsValue({
+                isActive: true,
+                isFeatured: false,
+                category: ['general']
+              });
             }}
             className="bg-gray-500 hover:bg-gray-600 text-white px-8 py-3 rounded-lg font-medium border-none"
           >

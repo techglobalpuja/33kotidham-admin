@@ -1,13 +1,19 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Modal, Typography } from 'antd';
-import { useSelector } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
 import { RootState } from '@/store';
+import { fetchPlans } from '@/store/slices/planSlice';
+import { fetchChadawas } from '@/store/slices/chadawaSlice';
+import { AppDispatch } from '@/store';
 
 const { Text } = Typography;
 
 interface Benefit {
+  id?: number;
+  benefit_title?: string | null;
+  benefit_description?: string | null;
   title?: string | null;
   description?: string | null;
 }
@@ -15,6 +21,22 @@ interface Benefit {
 interface Image {
   id: number;
   image_url: string;
+}
+
+interface PlanReference {
+  id: number;
+  name: string;
+  description?: string;
+  price?: string;
+}
+
+interface ChadawaReference {
+  id: number;
+  name: string;
+  description?: string;
+  image_url?: string;
+  price?: string;
+  requires_note?: boolean;
 }
 
 interface PujaData {
@@ -39,10 +61,10 @@ interface PujaData {
   is_featured?: boolean | null;
   puja_images?: string[] | null;
   images?: Image[] | null;
-  selected_plan_ids?: number[] | null; // ✅ NEW: plan IDs
-  chadawa_ids?: number[] | null; // ✅ NEW: chadawa IDs
-  date?: string | null; // ✅ NEW: date
-  time?: string | null; // ✅ NEW: time
+  plan_ids?: number[] | null; // Updated to match API response
+  chadawas?: ChadawaReference[] | null; // Updated to match API response
+  date?: string | null;
+  time?: string | null;
 }
 
 interface ViewPujaModalProps {
@@ -56,6 +78,8 @@ const ViewPujaModal: React.FC<ViewPujaModalProps> = ({
   visible, 
   onCancel
 }) => {
+  const dispatch = useDispatch<AppDispatch>();
+  
   // Enhanced safety checks and handlers
   const isVisible = Boolean(visible ?? false);
   const safeOnCancel = onCancel ?? (() => {});
@@ -63,6 +87,14 @@ const ViewPujaModal: React.FC<ViewPujaModalProps> = ({
   // ✅ NEW: Access plan and chadawa data from Redux store
   const { plans } = useSelector((state: RootState) => state.plan);
   const { chadawas } = useSelector((state: RootState) => state.chadawa);
+
+  // Fetch plans and chadawas when the modal is opened
+  useEffect(() => {
+    if (isVisible) {
+      dispatch(fetchPlans());
+      dispatch(fetchChadawas());
+    }
+  }, [dispatch, isVisible]);
 
   // Early return with comprehensive null checks
   if (!isVisible || !puja || typeof puja !== 'object') {
@@ -97,10 +129,10 @@ const ViewPujaModal: React.FC<ViewPujaModalProps> = ({
     is_featured: Boolean(puja.is_featured ?? false),
     puja_images: Array.isArray(puja.puja_images) ? puja.puja_images : [],
     images: Array.isArray(puja.images) ? puja.images : [],
-    selected_plan_ids: Array.isArray(puja.selected_plan_ids) ? puja.selected_plan_ids : [], // ✅ NEW: plan IDs
-    chadawa_ids: Array.isArray(puja.chadawa_ids) ? puja.chadawa_ids : [], // ✅ NEW: chadawa IDs
-    date: (puja.date ?? '').toString().trim() || 'N/A', // ✅ NEW: date
-    time: (puja.time ?? '').toString().trim() || 'N/A', // ✅ NEW: time
+    plan_ids: Array.isArray(puja.plan_ids) ? puja.plan_ids : [], // Updated to match API response
+    chadawas: Array.isArray(puja.chadawas) ? puja.chadawas : [], // Updated to match API response
+    date: (puja.date ?? '').toString().trim() || 'N/A',
+    time: (puja.time ?? '').toString().trim() || 'N/A',
   };
 
   // Format price safely
@@ -120,6 +152,7 @@ const ViewPujaModal: React.FC<ViewPujaModalProps> = ({
   const getPlanNames = (planIds: number[]) => {
     if (!Array.isArray(planIds) || planIds.length === 0) return 'None selected';
     
+    // Get plan names from Redux store
     return planIds
       .map(id => {
         const plan = plans?.find(p => p.id === id);
@@ -128,15 +161,12 @@ const ViewPujaModal: React.FC<ViewPujaModalProps> = ({
       .join(', ');
   };
 
-  // ✅ NEW: Function to get chadawa names by IDs
-  const getChadawaNames = (chadawaIds: number[]) => {
-    if (!Array.isArray(chadawaIds) || chadawaIds.length === 0) return 'None selected';
+  // ✅ NEW: Function to get chadawa names from chadawa objects
+  const getChadawaNames = (chadawas: ChadawaReference[]) => {
+    if (!Array.isArray(chadawas) || chadawas.length === 0) return 'None selected';
     
-    return chadawaIds
-      .map(id => {
-        const chadawa = chadawas?.find(c => c.id === id);
-        return chadawa ? chadawa.name : `Unknown Chadawa (${id})`;
-      })
+    return chadawas
+      .map(chadawa => chadawa.name || `Unknown Chadawa (${chadawa.id})`)
       .join(', ');
   };
 
@@ -282,20 +312,20 @@ const ViewPujaModal: React.FC<ViewPujaModalProps> = ({
           </h3>
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {safeData.benefits.length === 0 ? (
+            {safeData.benefits && safeData.benefits.length === 0 ? (
               <div className="md:col-span-2 text-center py-8">
                 <div className="text-gray-400 text-4xl mb-2">✨</div>
                 <p className="text-gray-500">No benefits information available</p>
               </div>
             ) : (
-              safeData.benefits.map((benefit: Benefit, index: number) => {
+              safeData.benefits?.map((benefit: Benefit, index: number) => {
                 if (!benefit || typeof benefit !== 'object') {
                   return null;
                 }
                 
                 const safeBenefit = {
-                  title: (benefit.title ?? '').toString().trim() || 'N/A',
-                  description: (benefit.description ?? '').toString().trim() || 'No description available'
+                  title: (benefit.benefit_title ?? benefit.title ?? '').toString().trim() || 'N/A',
+                  description: (benefit.benefit_description ?? benefit.description ?? '').toString().trim() || 'No description available'
                 };
                 
                 return (
@@ -420,14 +450,14 @@ const ViewPujaModal: React.FC<ViewPujaModalProps> = ({
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Selected Plans</label>
               <div className="w-full px-4 py-3 bg-purple-50 border border-purple-200 rounded-lg text-black min-h-12">
-                {getPlanNames(safeData.selected_plan_ids)}
+                {getPlanNames(safeData.plan_ids)}
               </div>
             </div>
             
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Selected Chadawas</label>
               <div className="w-full px-4 py-3 bg-purple-50 border border-purple-200 rounded-lg text-black min-h-12">
-                {getChadawaNames(safeData.chadawa_ids)}
+                {getChadawaNames(safeData.chadawas)}
               </div>
             </div>
           </div>

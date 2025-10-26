@@ -27,24 +27,41 @@ const ChadawaList: React.FC<ChadawaListProps> = ({ viewMode = 'grid' }) => {
   // Transform raw chadawas to match the component interface
   const chadawas: Chadawa[] = React.useMemo(() => {
     if (!Array.isArray(rawChadawas)) {
+      console.warn('rawChadawas is not an array:', rawChadawas);
       return [];
     }
     
     return rawChadawas
       .filter(chadawa => chadawa && typeof chadawa === 'object')
-      .map((chadawa: any) => ({
-        id: chadawa?.id ?? 0,
-        name: (chadawa?.name ?? '').toString().trim(),
-        description: (chadawa?.description ?? '').toString().trim(),
-        image_url: (chadawa?.image_url ?? '').toString().trim(),
-        price: (() => {
-          const price = chadawa?.price;
-          if (price === null || price === undefined) return 0;
-          const numPrice = Number(price);
-          return isNaN(numPrice) ? 0 : Math.max(0, numPrice);
-        })(),
-        requires_note: Boolean(chadawa?.requires_note ?? false),
-      }));
+      .map((chadawa: any) => {
+        try {
+          return {
+            id: chadawa?.id ?? 0,
+            name: (chadawa?.name ?? '').toString().trim(),
+            description: (chadawa?.description ?? '').toString().trim(),
+            image_url: (chadawa?.image_url ?? '').toString().trim(),
+            price: (() => {
+              const price = chadawa?.price;
+              if (price === null || price === undefined) return 0;
+              const numPrice = Number(price);
+              return isNaN(numPrice) ? 0 : Math.max(0, numPrice);
+            })(),
+            requires_note: Boolean(chadawa?.requires_note ?? false),
+          };
+        } catch (error) {
+          console.error('Error transforming chadawa data:', error, chadawa);
+          // Return a safe default object for corrupted data
+          return {
+            id: 0,
+            name: 'Error Loading Chadawa',
+            description: '',
+            image_url: '',
+            price: 0,
+            requires_note: false,
+          };
+        }
+      })
+      .filter(chadawa => chadawa.id !== 0);
   }, [rawChadawas]);
 
   const [selectedChadawaId, setSelectedChadawaId] = useState<number | null>(null);

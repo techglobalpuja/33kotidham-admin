@@ -47,29 +47,55 @@ const BlogList: React.FC<BlogListProps> = ({ viewMode = 'grid' }) => {
   // Transform raw blogs to match the component interface
   const blogs: Blog[] = React.useMemo(() => {
     if (!Array.isArray(rawBlogs)) {
+      console.warn('rawBlogs is not an array:', rawBlogs);
       return [];
     }
     
     return rawBlogs
       .filter(blog => blog && typeof blog === 'object')
-      .map((blog: any) => ({
-        id: blog?.id ?? 0,
-        title: (blog?.title ?? '').toString().trim(),
-        subtitle: (blog?.subtitle ?? '').toString().trim(),
-        content: (blog?.content ?? '').toString().trim(),
-        thumbnail_image: (blog?.thumbnail_image ?? '').toString().trim(),
-        meta_description: (blog?.meta_description ?? '').toString().trim(),
-        tags: (blog?.tags ?? '').toString().trim(),
-        category_ids: Array.isArray(blog?.category_ids) ? blog.category_ids : [], // Changed from category_id to category_ids
-        // Preserve the full categories array from API response
-        categories: Array.isArray(blog?.categories) ? blog.categories : [],
-        is_featured: Boolean(blog?.is_featured ?? false),
-        is_active: Boolean(blog?.is_active ?? true),
-        publish_time: (blog?.publish_time ?? new Date().toISOString()).toString().trim(),
-        slug: (blog?.slug ?? '').toString().trim(),
-        created_at: (blog?.created_at ?? new Date().toISOString()).toString().trim(),
-        updated_at: (blog?.updated_at ?? '').toString().trim(),
-      }));
+      .map((blog: any) => {
+        try {
+          return {
+            id: blog?.id ?? 0,
+            title: (blog?.title ?? '').toString().trim(),
+            subtitle: (blog?.subtitle ?? '').toString().trim(),
+            content: (blog?.content ?? '').toString().trim(),
+            thumbnail_image: (blog?.thumbnail_image ?? '').toString().trim(),
+            meta_description: (blog?.meta_description ?? '').toString().trim(),
+            tags: (blog?.tags ?? '').toString().trim(),
+            category_ids: Array.isArray(blog?.category_ids) ? blog.category_ids : [], // Changed from category_id to category_ids
+            // Preserve the full categories array from API response
+            categories: Array.isArray(blog?.categories) ? blog.categories : [],
+            is_featured: Boolean(blog?.is_featured ?? false),
+            is_active: Boolean(blog?.is_active ?? true),
+            publish_time: (blog?.publish_time ?? '').toString().trim(),
+            slug: (blog?.slug ?? '').toString().trim(),
+            created_at: (blog?.created_at ?? '').toString().trim(),
+            updated_at: (blog?.updated_at ?? '').toString().trim(),
+          };
+        } catch (error) {
+          console.error('Error transforming blog data:', error, blog);
+          // Return a safe default object for corrupted data
+          return {
+            id: 0,
+            title: 'Error Loading Blog',
+            subtitle: '',
+            content: '',
+            thumbnail_image: '',
+            meta_description: '',
+            tags: '',
+            category_ids: [],
+            categories: [],
+            is_featured: false,
+            is_active: false,
+            publish_time: '',
+            slug: '',
+            created_at: '',
+            updated_at: '',
+          };
+        }
+      })
+      .filter(blog => blog.id !== 0);
   }, [rawBlogs]);
 
   useEffect(() => {

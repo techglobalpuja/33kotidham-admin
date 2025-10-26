@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { Modal, Form, Input, Button, Checkbox, Select, Typography, Row, Col } from 'antd';
+import { Modal, Form, Input, Button, Checkbox, Select, Typography, Row, Col, message } from 'antd';
 import { useDropzone } from 'react-dropzone';
 import { RootState } from '@/store';
 import { fetchPujaById, updatePuja, uploadPujaImages, deletePujaImage } from '@/store/slices/pujaSlice';
@@ -359,8 +359,12 @@ const UpdatePujaModal: React.FC<UpdatePujaModalProps> = ({
     }
   }, [pujaData, isVisible, form]);
 
-  const { getRootProps: getPujaRootProps, getInputProps: getPujaInputProps } = useDropzone({
-    accept: { 'image/*': [] },
+  const { getRootProps: getPujaRootProps, getInputProps: getPujaInputProps, isDragActive } = useDropzone({
+    accept: {
+      'image/jpeg': [],
+      'image/png': [],
+      'image/jpg': []
+    },
     multiple: true,
     maxFiles: 6,
     maxSize: 10 * 1024 * 1024,
@@ -370,11 +374,11 @@ const UpdatePujaModal: React.FC<UpdatePujaModalProps> = ({
           rejectedFiles.forEach(({ file, errors }) => {
             errors.forEach(error => {
               if (error.code === 'file-too-large') {
-                console.error(`File ${file.name} is too large. Maximum size is 10MB.`);
+                message.error(`File ${file.name} is too large. Maximum size is 10MB.`);
               } else if (error.code === 'file-invalid-type') {
-                console.error(`File ${file.name} has invalid type. Only images are allowed.`);
+                message.error(`File ${file.name} has invalid type. Only JPEG, PNG are allowed.`);
               } else if (error.code === 'too-many-files') {
-                console.error('Too many files. Maximum 6 images allowed.');
+                message.error('Cannot upload more than 6 images.');
               }
             });
           });
@@ -382,12 +386,16 @@ const UpdatePujaModal: React.FC<UpdatePujaModalProps> = ({
         
         if (Array.isArray(acceptedFiles) && acceptedFiles.length > 0) {
           const validFiles = acceptedFiles.filter(file => file && file instanceof File);
+          const currentImages = formData.pujaImages || [];
+          const totalImages = currentImages.length + validFiles.length;
           
-          if (validFiles.length > 6) {
-            console.warn('Only 6 images allowed. Taking first 6 files.');
-            handleInputChange('pujaImages', validFiles.slice(0, 6));
+          if (totalImages > 6) {
+            message.warning(`Cannot upload more than 6 images. You can add ${6 - currentImages.length} more images.`);
+            const allowedCount = 6 - currentImages.length;
+            const filesToAdd = validFiles.slice(0, allowedCount);
+            handleInputChange('pujaImages', [...currentImages, ...filesToAdd]);
           } else {
-            handleInputChange('pujaImages', validFiles);
+            handleInputChange('pujaImages', [...currentImages, ...validFiles]);
           }
           
           setImagesChanged(true);
@@ -399,7 +407,11 @@ const UpdatePujaModal: React.FC<UpdatePujaModalProps> = ({
   });
 
   const { getRootProps: getTempleRootProps, getInputProps: getTempleInputProps } = useDropzone({
-    accept: { 'image/*': [] },
+    accept: {
+      'image/jpeg': [],
+      'image/png': [],
+      'image/jpg': []
+    },
     multiple: false,
     maxSize: 10 * 1024 * 1024,
     onDrop: (acceptedFiles, rejectedFiles) => {
@@ -408,9 +420,9 @@ const UpdatePujaModal: React.FC<UpdatePujaModalProps> = ({
           rejectedFiles.forEach(({ file, errors }) => {
             errors.forEach(error => {
               if (error.code === 'file-too-large') {
-                console.error(`File ${file.name} is too large. Maximum size is 10MB.`);
+                message.error(`File ${file.name} is too large. Maximum size is 10MB.`);
               } else if (error.code === 'file-invalid-type') {
-                console.error(`File ${file.name} has invalid type. Only images are allowed.`);
+                message.error(`File ${file.name} has invalid type. Only JPEG, PNG are allowed.`);
               }
             });
           });

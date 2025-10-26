@@ -118,6 +118,8 @@ const PujaList: React.FC<PujaListProps> = ({ viewMode = 'grid' }) => {
               }
             })(),
             selectedPlan: (puja?.selected_plan ?? 'Basic Puja Package').toString().trim(),
+            // Preserve all original properties for the ViewPujaModal
+            ...puja
           };
         } catch (error) {
           console.error('Error transforming puja data:', error, puja);
@@ -141,7 +143,11 @@ const PujaList: React.FC<PujaListProps> = ({ viewMode = 'grid' }) => {
           };
         }
       })
-      .filter(puja => puja.id && !puja.id.startsWith('error-')); // Filter out error entries
+      .filter(puja => {
+        // Ensure puja.id is a string before calling startsWith
+        const pujaId = (puja.id ?? '').toString().trim();
+        return pujaId && !pujaId.startsWith('error-');
+      }); // Filter out error entries
   }, [rawPujas]);
 
   const [selectedPujaId, setSelectedPujaId] = useState<string | null>(null);
@@ -343,6 +349,12 @@ const PujaList: React.FC<PujaListProps> = ({ viewMode = 'grid' }) => {
       return false;
     }
 
+    // Ensure puja has a valid ID
+    const pujaId = (puja?.id ?? '').toString().trim();
+    if (!pujaId) {
+      return false;
+    }
+
     const pujaName = (puja?.pujaName ?? '').toString().trim();
     const subHeading = (puja?.subHeading ?? '').toString().trim();
     const templeAddress = (puja?.templeAddress ?? '').toString().trim();
@@ -455,11 +467,18 @@ const PujaList: React.FC<PujaListProps> = ({ viewMode = 'grid' }) => {
           ) : (
             (filteredPujas ?? []).map((puja) => {
               // Skip rendering if puja data is invalid
-              if (!puja || typeof puja !== 'object' || !puja.id) {
+              if (!puja || typeof puja !== 'object') {
                 return null;
               }
+              
+              // Ensure puja has a valid ID
+              const safePujaId = (puja?.id ?? '').toString().trim();
+              if (!safePujaId) {
+                return null;
+              }
+              
               return (
-            <div key={puja?.id ?? ''} className="border border-gray-200 rounded-lg p-4 hover:shadow-lg transition-all duration-200 bg-white">
+            <div key={safePujaId} className="border border-gray-200 rounded-lg p-4 hover:shadow-lg transition-all duration-200 bg-white">
               <div className="aspect-video bg-gradient-to-br from-orange-100 to-orange-200 rounded-lg mb-4 flex items-center justify-center relative overflow-hidden">
                 {puja?.images && puja.images.length > 0 ? (
                   <div className="relative w-full h-full">
@@ -570,9 +589,9 @@ const PujaList: React.FC<PujaListProps> = ({ viewMode = 'grid' }) => {
                 <button 
                   onClick={(e) => {
                     e?.stopPropagation?.();
-                    onUpdateModalOpen(puja.id, puja);
+                    onUpdateModalOpen((puja?.id ?? '').toString().trim(), puja);
                   }}
-                  disabled={!puja?.id || isLoadingUpdate}
+                  disabled={!(puja?.id ?? '').toString().trim() || isLoadingUpdate}
                   className="flex-1 bg-blue-50 hover:bg-blue-100 text-blue-600 py-2 px-3 rounded-lg text-sm font-medium transition-colors duration-200 flex items-center justify-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {isLoadingUpdate ? (
@@ -586,9 +605,9 @@ const PujaList: React.FC<PujaListProps> = ({ viewMode = 'grid' }) => {
                 <button 
                   onClick={(e) => {
                     e?.stopPropagation?.();
-                    onViewModalOpen(puja.id, puja);
+                    onViewModalOpen((puja?.id ?? '').toString().trim(), puja);
                   }}
-                  disabled={!puja || isLoadingView}
+                  disabled={!(puja?.id ?? '').toString().trim() || isLoadingView}
                   className="flex-1 bg-gray-50 hover:bg-gray-100 text-gray-600 py-2 px-3 rounded-lg text-sm font-medium transition-colors duration-200 flex items-center justify-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {isLoadingView ? (
@@ -602,12 +621,12 @@ const PujaList: React.FC<PujaListProps> = ({ viewMode = 'grid' }) => {
                 <button 
                   onClick={(e) => {
                     e?.stopPropagation?.();
-                    handleDeletePuja(puja.id, puja.pujaName);
+                    handleDeletePuja((puja?.id ?? '').toString().trim(), puja.pujaName);
                   }}
-                  disabled={!puja?.id || isLoadingDelete === puja.id}
+                  disabled={!(puja?.id ?? '').toString().trim() || isLoadingDelete === (puja?.id ?? '').toString().trim()}
                   className="bg-red-50 hover:bg-red-100 text-red-600 py-2 px-3 rounded-lg text-sm font-medium transition-colors duration-200 flex items-center justify-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {isLoadingDelete === puja.id ? (
+                  {isLoadingDelete === (puja?.id ?? '').toString().trim() ? (
                     <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-red-600"></div>
                   ) : (
                     <>🗑️</>
@@ -657,11 +676,18 @@ const PujaList: React.FC<PujaListProps> = ({ viewMode = 'grid' }) => {
                 ) : (
                   (filteredPujas ?? []).map((puja) => {
                     // Skip rendering if puja data is invalid
-                    if (!puja || typeof puja !== 'object' || !puja.id) {
+                    if (!puja || typeof puja !== 'object') {
                       return null;
                     }
+                    
+                    // Ensure puja has a valid ID
+                    const safePujaId = (puja?.id ?? '').toString().trim();
+                    if (!safePujaId) {
+                      return null;
+                    }
+                    
                     return (
-                  <tr key={puja?.id ?? ''} className="hover:bg-gray-50">
+                  <tr key={safePujaId} className="hover:bg-gray-50">
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center">
                         <div className="flex-shrink-0 h-12 w-12">
