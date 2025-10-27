@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { usePathname, useSearchParams, useRouter } from 'next/navigation';
 import { AdminStats } from '@/types';
 import AdminLayout from '@/components/admin/layout/AdminLayout';
 import OverviewTab from '@/components/admin/dashboard/OverviewTab';
@@ -22,7 +23,37 @@ interface AdminDashboardProps {
 
 const AdminDashboard: React.FC<AdminDashboardProps> = () => {
   const { isAuthenticated, user } = useRequireAuth();
-  const [activeTab, setActiveTab] = useState('overview');
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  
+  // Get initial tab from URL or default to 'overview'
+  const getInitialTab = () => {
+    const tabParam = searchParams.get('tab');
+    const validTabs = ['overview', 'pujas', 'plans', 'chawada', 'products', 'users', 'orders', 'content', 'blogs', 'analytics'];
+    return tabParam && validTabs.includes(tabParam) ? tabParam : 'overview';
+  };
+  
+  const [activeTab, setActiveTab] = useState(getInitialTab());
+
+  // Update URL when tab changes
+  const handleTabChange = (tab: string) => {
+    setActiveTab(tab);
+    // Update URL without page reload
+    const params = new URLSearchParams(searchParams.toString());
+    params.set('tab', tab);
+    router.push(`${pathname}?${params.toString()}`, { scroll: false });
+  };
+
+  // Listen for browser back/forward navigation
+  useEffect(() => {
+    const handlePopState = () => {
+      setActiveTab(getInitialTab());
+    };
+    
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
 
   // If not authenticated, don't render the dashboard
   if (!isAuthenticated) {
@@ -83,7 +114,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = () => {
   };
 
   return (
-    <AdminLayout activeTab={activeTab} onTabChange={setActiveTab}>
+    <AdminLayout activeTab={activeTab} onTabChange={handleTabChange}>
       {/* Overview Tab */}
       {activeTab === 'overview' && (
         <div className="space-y-6">
@@ -210,7 +241,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = () => {
             <h3 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h3>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <button
-                onClick={() => setActiveTab('pujas')}
+                onClick={() => handleTabChange('pujas')}
                 className="p-4 bg-gradient-to-r from-orange-100 to-orange-200 rounded-lg hover:from-orange-200 hover:to-orange-300 transition-all duration-200 group"
               >
                 <div className="text-center">
@@ -222,7 +253,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = () => {
               </button>
               
               <button
-                onClick={() => setActiveTab('plans')}
+                onClick={() => handleTabChange('plans')}
                 className="p-4 bg-gradient-to-r from-indigo-100 to-indigo-200 rounded-lg hover:from-indigo-200 hover:to-indigo-300 transition-all duration-200 group"
               >
                 <div className="text-center">
@@ -234,7 +265,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = () => {
               </button>
               
               {/* <button
-                onClick={() => setActiveTab('products')}
+                onClick={() => handleTabChange('products')}
                 className="p-4 bg-gradient-to-r from-emerald-100 to-emerald-200 rounded-lg hover:from-emerald-200 hover:to-emerald-300 transition-all duration-200 group"
               >
                 <div className="text-center">
@@ -246,7 +277,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = () => {
               </button> */}
               
               <button
-                onClick={() => setActiveTab('chawada')}
+                onClick={() => handleTabChange('chawada')}
                 className="p-4 bg-gradient-to-r from-purple-100 to-purple-200 rounded-lg hover:from-purple-200 hover:to-purple-300 transition-all duration-200 group"
               >
                 <div className="text-center">
@@ -258,7 +289,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = () => {
               </button>
               
               <button
-                onClick={() => setActiveTab('users')}
+                onClick={() => handleTabChange('users')}
                 className="p-4 bg-gradient-to-r from-blue-100 to-blue-200 rounded-lg hover:from-blue-200 hover:to-blue-300 transition-all duration-200 group"
               >
                 <div className="text-center">
@@ -270,7 +301,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = () => {
               </button>
               
               {/* <button
-                onClick={() => setActiveTab('content')}
+                onClick={() => handleTabChange('content')}
                 className="p-4 bg-gradient-to-r from-green-100 to-green-200 rounded-lg hover:from-green-200 hover:to-green-300 transition-all duration-200 group"
               >
                 <div className="text-center">
