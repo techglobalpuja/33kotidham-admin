@@ -52,12 +52,12 @@ export interface User {
   id: number;
   name: string;
   email: string;
-  mobile?: string;
-  role?: string;
-  is_active?: boolean;
-  email_verified?: boolean;
-  created_at?: string;
-  updated_at?: string;
+  mobile: string;
+  role: string;
+  is_active: boolean;
+  email_verified: boolean;
+  created_at: string;
+  updated_at: string;
   isAuthenticated?: boolean;
   // OAuth2 token fields
   access_token?: string;
@@ -341,4 +341,94 @@ export interface Category {
   is_active: boolean;
   created_at?: string;
   updated_at?: string;
+}
+
+// Booking types for API
+export interface Booking {
+  id: number;
+  puja_id: number;
+  plan_id: number;
+  booking_date: string;
+  mobile_number: string;
+  whatsapp_number: string;
+  gotra: string;
+  user_id: number;
+  status: string;
+  puja_link: string | null;
+  created_at: string;
+  user: {
+    id: number;
+    name: string;
+    email: string;
+    mobile: string;
+    role: string;
+    is_active: boolean;
+    email_verified: boolean;
+    created_at: string;
+    updated_at: string;
+  };
+  puja: {
+    id: number;
+    name: string;
+    sub_heading: string;
+    description: string;
+    date: string;
+    time: string;
+    temple_image_url: string;
+    temple_address: string;
+    temple_description: string;
+    prasad_price: number;
+    is_prasad_active: boolean;
+    dakshina_prices_inr: string;
+    dakshina_prices_usd: string;
+    is_dakshina_active: boolean;
+    manokamna_prices_inr: string;
+    manokamna_prices_usd: string;
+    is_manokamna_active: boolean;
+    category: string;
+    created_at: string;
+    updated_at: string;
+    benefits: Array<{
+      id: number;
+      benefit_title: string;
+      benefit_description: string;
+      puja_id: number;
+      created_at: string;
+    }>;
+    images: Array<{
+      id: number;
+      image_url: string;
+    }>;
+    plan_ids: number[];
+    chadawas: any[];
+  };
+  plan: {
+    id: number;
+    name: string;
+    description: string;
+    image_url: string;
+    actual_price: string;
+    discounted_price: string;
+    created_at: string;
+  };
+  booking_chadawas: Array<{
+    id: number;
+    chadawa_id: number;
+    note: string | null;
+    chadawa: {
+      id: number;
+      name: string;
+      description: string;
+      image_url: string;
+      price: string;
+      requires_note: boolean;
+    };
+  }>;
+}
+
+export interface BookingState {
+  bookings: Booking[] | null;
+  selectedBooking: Booking | null;
+  isLoading: boolean;
+  error: string | null;
 }

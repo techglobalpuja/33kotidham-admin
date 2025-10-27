@@ -9,7 +9,7 @@ import PlanManagement from '@/components/admin/plan/PlanManagement';
 import ChawadaManagement from '@/components/admin/chawada/ChawadaManagement';
 import ProductManagement from '@/components/admin/product/ProductManagement';
 import UsersManagement from '@/components/admin/users/UsersManagement';
-import OrdersManagement from '@/components/admin/orders/OrdersManagement';
+import BookingManagement from '@/components/admin/bookings/BookingManagement';
 import ContentManagement from '@/components/admin/content/ContentManagement';
 import BlogManagement from '@/components/admin/blog/BlogManagement';
 import AnalyticsTab from '@/components/admin/analytics/AnalyticsTab';
@@ -58,7 +58,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = () => {
       case 'users':
         return <UsersManagement />;
       case 'orders':
-        return <OrdersManagement />;
+        return <BookingManagement />;
       case 'content':
         return <ContentManagement />;
       case 'blogs':
