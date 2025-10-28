@@ -810,18 +810,51 @@ const UpdatePujaModal: React.FC<UpdatePujaModalProps> = ({
       
       const updateResult = await dispatch(updatePuja({ id: safePujaId, ...requestData }));
       
-      if (updatePuja.fulfilled.match(updateResult) && 
-          imagesChanged && 
-          Array.isArray(formData.pujaImages) && 
-          formData.pujaImages.length > 0) {
-        
-        const validImages = formData.pujaImages.filter(img => img instanceof File);
-        if (validImages.length > 0) {
-          console.log("Uploading images:", validImages);
-          await dispatch(uploadPujaImages({
-            pujaId: safePujaId,
-            images: validImages
-          }));
+      if (updatePuja.fulfilled.match(updateResult)) {
+        // ✅ NEW: If new images are being uploaded, delete all old images first
+        if (imagesChanged && 
+            Array.isArray(formData.pujaImages) && 
+            formData.pujaImages.length > 0) {
+          
+          // Delete all existing images before uploading new ones
+          if (formData.images && Array.isArray(formData.images) && formData.images.length > 0) {
+            console.log(`🗑️ Deleting ${formData.images.length} existing images before uploading new ones...`);
+            
+            for (const image of formData.images) {
+              if (image && image.id) {
+                try {
+                  const deleteResult = await dispatch(deletePujaImage({ 
+                    pujaId: safePujaId, 
+                    imageId: image.id 
+                  }));
+                  
+                  if (deletePujaImage.fulfilled.match(deleteResult)) {
+                    console.log(`✅ Deleted image ${image.id}`);
+                  } else {
+                    console.error(`❌ Failed to delete image ${image.id}`);
+                  }
+                } catch (error) {
+                  console.error(`❌ Error deleting image ${image.id}:`, error);
+                }
+              }
+            }
+            
+            message.success('Previous images deleted successfully');
+          }
+          
+          // Upload new images
+          const validImages = formData.pujaImages.filter(img => img instanceof File);
+          if (validImages.length > 0) {
+            console.log(`📤 Uploading ${validImages.length} new images...`);
+            const uploadResult = await dispatch(uploadPujaImages({
+              pujaId: safePujaId,
+              images: validImages
+            }));
+            
+            if (uploadPujaImages.fulfilled.match(uploadResult)) {
+              message.success('New images uploaded successfully!');
+            }
+          }
         }
       }
       
@@ -934,7 +967,7 @@ const UpdatePujaModal: React.FC<UpdatePujaModalProps> = ({
                   </p>
                   <p className="text-xs text-orange-500">PNG, JPG, JPEG up to 10MB each</p>
                   {imagesChanged && (
-                    <p className="text-xs text-green-600 font-medium mt-1">Images will be updated when saved</p>
+                    <p className="text-xs text-red-600 font-bold mt-1">⚠️ Previous images will be deleted and replaced</p>
                   )}
                 </div>
               </div>
@@ -942,10 +975,23 @@ const UpdatePujaModal: React.FC<UpdatePujaModalProps> = ({
               {/* New Images Preview */}
               {formData.pujaImages && Array.isArray(formData.pujaImages) && formData.pujaImages.length > 0 && (
                 <div className="mt-4">
+                  {/* Warning Banner */}
+                  <div className="mb-3 p-3 bg-red-50 border border-red-200 rounded-lg">
+                    <div className="flex items-start gap-2">
+                      <svg className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                      </svg>
+                      <div>
+                        <p className="text-sm font-bold text-red-800">All previous images will be deleted</p>
+                        <p className="text-xs text-red-600 mt-1">When you save, all current images will be permanently removed and replaced with the new images below.</p>
+                      </div>
+                    </div>
+                  </div>
+                  
                   <div className="flex items-center justify-between mb-3">
                     <h4 className="text-sm font-medium text-gray-700">New Images to Upload (Drag to Reorder):</h4>
                     <div className="text-xs text-gray-500 bg-blue-50 px-3 py-1 rounded-full">
-                      Drag images to change upload order
+                      💡 Drag images to change upload order
                     </div>
                   </div>
                   <DndContext
@@ -1021,8 +1067,8 @@ const UpdatePujaModal: React.FC<UpdatePujaModalProps> = ({
                       </div>
                     ))}
                   </div>
-                  <p className="text-xs text-blue-600 mt-2">
-                    {imagesChanged ? 'These will be replaced with new images when saved' : 'Click ✕ to delete individual images'}
+                  <p className={`text-xs mt-2 font-medium ${imagesChanged ? 'text-red-600' : 'text-blue-600'}`}>
+                    {imagesChanged ? '⚠️ These images will be deleted and replaced with new images when saved' : 'Upload new images above to replace these'}
                   </p>
                 </div>
               )}
