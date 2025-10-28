@@ -21,6 +21,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children, activeTab, onTabCha
   const menuItems = [
     { id: 'overview', label: 'Overview', icon: '📊' },
     { id: 'pujas', label: 'Manage Pujas', icon: '🛕' },
+    { id: 'temples', label: 'Manage Temples', icon: '⛩️' },
     { id: 'plans', label: 'Manage Plans', icon: '📋' },
     // { id: 'products', label: 'Products', icon: '📦' },
     { id: 'users', label: 'Users', icon: '👥' },

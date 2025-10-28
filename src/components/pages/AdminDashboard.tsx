@@ -13,6 +13,7 @@ import UsersManagement from '@/components/admin/users/UsersManagement';
 import BookingManagement from '@/components/admin/bookings/BookingManagement';
 import ContentManagement from '@/components/admin/content/ContentManagement';
 import BlogManagement from '@/components/admin/blog/BlogManagement';
+import TempleManagement from '@/components/admin/temple/TempleManagement';
 import AnalyticsTab from '@/components/admin/analytics/AnalyticsTab';
 import { useRequireAuth } from '@/hooks/useAuth';
 
@@ -30,7 +31,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = () => {
   // Get initial tab from URL or default to 'overview'
   const getInitialTab = () => {
     const tabParam = searchParams.get('tab');
-    const validTabs = ['overview', 'pujas', 'plans', 'chawada', 'products', 'users', 'orders', 'content', 'blogs', 'analytics'];
+    const validTabs = ['overview', 'pujas', 'plans', 'chawada', 'products', 'users', 'orders', 'content', 'blogs', 'temples', 'analytics'];
     return tabParam && validTabs.includes(tabParam) ? tabParam : 'overview';
   };
   
@@ -94,6 +95,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = () => {
         return <ContentManagement />;
       case 'blogs':
         return <BlogManagement />;
+      case 'temples':
+        return <TempleManagement />;
       case 'analytics':
         return <AnalyticsTab />;
       default:

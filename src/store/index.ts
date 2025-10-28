@@ -7,6 +7,7 @@ import chadawaReducer from '@/store/slices/chadawaSlice';
 import blogReducer from '@/store/slices/blogSlice';
 import categoryReducer from '@/store/slices/categorySlice';
 import bookingReducer from '@/store/slices/bookingSlice';
+import templeReducer from '@/store/slices/templeSlice';
 
 const store = configureStore({
   reducer: {
@@ -17,6 +18,7 @@ const store = configureStore({
     blog: blogReducer,
     category: categoryReducer,
     booking: bookingReducer,
+    temple: templeReducer,
   },
 });
 

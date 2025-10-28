@@ -432,3 +432,34 @@ export interface BookingState {
   isLoading: boolean;
   error: string | null;
 }
+
+// Temple types for API
+export interface Temple {
+  id: number;
+  name: string;
+  description: string;
+  image_url: string;
+  location: string;
+  slug: string;
+  created_at: string;
+  updated_at: string;
+  recommended_pujas: any[];
+  chadawas: any[];
+}
+
+export interface TempleFormData {
+  name: string;
+  description: string;
+  image_url: string;
+  location: string;
+  slug: string;
+  recommended_puja_ids?: number[];
+  chadawa_ids?: number[];
+}
+
+export interface TempleState {
+  temples: Temple[] | null;
+  selectedTemple: Temple | null;
+  isLoading: boolean;
+  error: string | null;
+}
