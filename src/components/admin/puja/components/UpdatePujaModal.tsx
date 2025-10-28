@@ -4,6 +4,23 @@ import React, { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { Modal, Form, Input, Button, Checkbox, Select, Typography, Row, Col, message } from 'antd';
 import { useDropzone } from 'react-dropzone';
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import { RootState } from '@/store';
 import { fetchPujaById, updatePuja, uploadPujaImages, deletePujaImage } from '@/store/slices/pujaSlice';
 import { fetchPlans } from '@/store/slices/planSlice';
@@ -12,6 +29,105 @@ import { AppDispatch } from '@/store';
 
 const { Text } = Typography;
 const { Option } = Select;
+
+// Sortable Image Item Component for Update Modal
+interface SortableImageItemProps {
+  file: File;
+  index: number;
+  onRemove: () => void;
+  createImagePreviewUrl: (file: File) => string;
+  revokeImagePreviewUrl: (url: string) => void;
+}
+
+const SortableImageItem: React.FC<SortableImageItemProps> = ({ 
+  file, 
+  index, 
+  onRemove,
+  createImagePreviewUrl,
+  revokeImagePreviewUrl
+}) => {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: file.name + index });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  let previewUrl = '';
+  try {
+    previewUrl = createImagePreviewUrl(file);
+  } catch (e) {}
+
+  return (
+    <div 
+      ref={setNodeRef} 
+      style={style}
+      className="relative bg-white p-3 rounded-lg border-2 border-orange-200 hover:border-orange-400 transition-colors cursor-move"
+    >
+      {/* Drag Handle Indicator */}
+      <div 
+        {...attributes} 
+        {...listeners}
+        className="absolute top-2 left-2 z-10 bg-orange-500 text-white px-2 py-1 rounded text-xs font-bold flex items-center gap-1 cursor-grab active:cursor-grabbing"
+      >
+        <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+          <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z" />
+        </svg>
+        #{index + 1}
+      </div>
+
+      {previewUrl ? (
+        <div className="relative w-full h-24 mb-2 rounded overflow-hidden">
+          <img 
+            src={previewUrl} 
+            alt={`Preview ${index + 1}`} 
+            className="w-full h-full object-cover"
+            onError={(e) => {
+              revokeImagePreviewUrl(previewUrl);
+              e.currentTarget.style.display = 'none';
+              if (e.currentTarget.nextElementSibling) {
+                (e.currentTarget.nextElementSibling as HTMLElement).style.display = 'flex';
+              }
+            }}
+          />
+          <div 
+            className="absolute inset-0 bg-gray-900 bg-opacity-0 hover:bg-opacity-20 transition-all duration-200 flex items-center justify-center opacity-0 hover:opacity-100 cursor-pointer"
+            onClick={onRemove}
+          >
+            <span className="text-white text-lg font-bold">✕</span>
+          </div>
+        </div>
+      ) : (
+        <div className="flex items-center justify-center w-full h-24 mb-2 bg-orange-50 rounded">
+          <svg className="w-8 h-8 text-orange-400" fill="currentColor" viewBox="0 0 20 20">
+            <path fillRule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clipRule="evenodd" />
+          </svg>
+        </div>
+      )}
+      <div className="flex items-center gap-2">
+        <span className="text-xs text-gray-600 truncate flex-1">{file.name}</span>
+        <button
+          type="button"
+          onClick={onRemove}
+          className="text-red-500 hover:text-red-700 text-xs"
+        >
+          ✕
+        </button>
+      </div>
+      <div className="text-xs text-gray-400 mt-1">
+        {(file.size / 1024 / 1024).toFixed(2)} MB
+      </div>
+    </div>
+  );
+};
 
 interface Benefit {
   title?: string | null;
@@ -401,7 +517,8 @@ const UpdatePujaModal: React.FC<UpdatePujaModalProps> = ({
           setImagesChanged(true);
         }
       } catch (error) {
-        console.error('Error handling puja images drop:', error);
+        console.error('Error in onDrop:', error);
+        message.error('Error processing files');
       }
     },
   });
@@ -437,6 +554,34 @@ const UpdatePujaModal: React.FC<UpdatePujaModalProps> = ({
       }
     },
   });
+
+  // Drag and Drop sensors for image reordering
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
+  // Handle drag end to reorder new images
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+
+    if (over && active.id !== over.id && formData.pujaImages && Array.isArray(formData.pujaImages)) {
+      const oldIndex = formData.pujaImages.findIndex((file, idx) => file.name + idx === active.id);
+      const newIndex = formData.pujaImages.findIndex((file, idx) => file.name + idx === over.id);
+
+      if (oldIndex !== -1 && newIndex !== -1) {
+        const reorderedImages = arrayMove(formData.pujaImages, oldIndex, newIndex);
+        handleInputChange('pujaImages', reorderedImages);
+        message.success('Image order updated!');
+      }
+    }
+  };
 
   const handleInputChange = (field: keyof PujaFormData, value: any) => {
     try {
@@ -797,80 +942,45 @@ const UpdatePujaModal: React.FC<UpdatePujaModalProps> = ({
               {/* New Images Preview */}
               {formData.pujaImages && Array.isArray(formData.pujaImages) && formData.pujaImages.length > 0 && (
                 <div className="mt-4">
-                  <h4 className="text-sm font-medium text-gray-700 mb-2">New Images to Upload:</h4>
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                    {formData.pujaImages.map((file, index) => {
-                      let previewUrl = '';
-                      try {
-                        previewUrl = createImagePreviewUrl(file);
-                      } catch (e) {}
-                      
-                      return (
-                        <div key={index} className="relative bg-white p-3 rounded-lg border border-orange-200">
-                          {previewUrl ? (
-                            <div className="relative w-full h-24 mb-2 rounded overflow-hidden">
-                              <img 
-                                src={previewUrl} 
-                                alt={`Preview ${index + 1}`} 
-                                className="w-full h-full object-cover"
-                                onError={(e) => {
-                                  revokeImagePreviewUrl(previewUrl);
-                                  e.currentTarget.style.display = 'none';
-                                }}
-                              />
-                              <div 
-                                className="absolute inset-0 bg-gray-900 bg-opacity-0 hover:bg-opacity-20 transition-all duration-200 flex items-center justify-center opacity-0 hover:opacity-100 cursor-pointer"
-                                onClick={() => {
-                                  revokeImagePreviewUrl(previewUrl);
-                                  if (formData.pujaImages && Array.isArray(formData.pujaImages)) {
-                                    const updatedImages = formData.pujaImages.filter((_, i) => i !== index);
-                                    handleInputChange('pujaImages', updatedImages);
-                                    if (updatedImages.length === 0) {
-                                      setImagesChanged(false);
-                                    }
-                                  }
-                                }}
-                              >
-                                <span className="text-white text-lg font-bold">✕</span>
-                              </div>
-                            </div>
-                          ) : (
-                            <div className="flex items-center justify-center w-full h-24 mb-2 bg-orange-50 rounded">
-                              <svg className="w-8 h-8 text-orange-400" fill="currentColor" viewBox="0 0 20 20">
-                                <path fillRule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clipRule="evenodd" />
-                              </svg>
-                            </div>
-                          )}
-                          <div className="flex items-center gap-2">
-                            <span className="text-xs text-gray-600 truncate flex-1">{file.name}</span>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                if (previewUrl) revokeImagePreviewUrl(previewUrl);
-                                if (formData.pujaImages && Array.isArray(formData.pujaImages)) {
-                                  const updatedImages = formData.pujaImages.filter((_, i) => i !== index);
-                                  handleInputChange('pujaImages', updatedImages);
-                                  if (updatedImages.length === 0) {
-                                    setImagesChanged(false);
-                                  }
-                                }
-                              }}
-                              className="text-red-500 hover:text-red-700 text-xs"
-                            >
-                              ✕
-                            </button>
-                          </div>
-                          <div className="text-xs text-gray-400 mt-1">
-                            {(file.size / 1024 / 1024).toFixed(2)} MB
-                          </div>
-                        </div>
-                      );
-                    })}
+                  <div className="flex items-center justify-between mb-3">
+                    <h4 className="text-sm font-medium text-gray-700">New Images to Upload (Drag to Reorder):</h4>
+                    <div className="text-xs text-gray-500 bg-blue-50 px-3 py-1 rounded-full">
+                      Drag images to change upload order
+                    </div>
                   </div>
+                  <DndContext
+                    sensors={sensors}
+                    collisionDetection={closestCenter}
+                    onDragEnd={handleDragEnd}
+                  >
+                    <SortableContext
+                      items={formData.pujaImages.map((file, idx) => file.name + idx)}
+                      strategy={verticalListSortingStrategy}
+                    >
+                      <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                        {formData.pujaImages.map((file, index) => (
+                          <SortableImageItem
+                            key={file.name + index}
+                            file={file}
+                            index={index}
+                            onRemove={() => {
+                              const updatedImages = formData.pujaImages!.filter((_, i) => i !== index);
+                              handleInputChange('pujaImages', updatedImages);
+                              if (updatedImages.length === 0) {
+                                setImagesChanged(false);
+                              }
+                            }}
+                            createImagePreviewUrl={createImagePreviewUrl}
+                            revokeImagePreviewUrl={revokeImagePreviewUrl}
+                          />
+                        ))}
+                      </div>
+                    </SortableContext>
+                  </DndContext>
                 </div>
               )}
               
-              {/* ✅ EXISTING IMAGES FROM formData.images */}
+              {/* EXISTING IMAGES FROM formData.images */}
               {formData.images && Array.isArray(formData.images) && formData.images.length > 0 && (
                 <div className="mt-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
                   <h4 className="text-sm font-medium text-blue-700 mb-2">Current Images ({formData.images.length}):</h4>
