@@ -473,7 +473,7 @@ const CreateTempleForm: React.FC<CreateTempleFormProps> = ({ onSuccess }) => {
                           )}
                           {puja.category && (
                             <span className="text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded">
-                              🏷️ {Array.isArray(puja.category) ? puja.category[0] : typeof puja.category === 'string' ? puja.category.split(',')[0] : puja.category}
+                              🏷️ {Array.isArray(puja.category) ? puja.category[0] : typeof puja.category === 'string' ? (puja.category as string).split(',')[0] : String(puja.category)}
                             </span>
                           )}
                         </div>
