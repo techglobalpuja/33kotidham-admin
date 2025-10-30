@@ -157,15 +157,15 @@ const PujaList: React.FC<PujaListProps> = ({ viewMode = 'grid' }) => {
   const [updatePujaData, setUpdatePujaData] = useState<any>(null); // Data for update modal
   const [viewPujaData, setViewPujaData] = useState<any>(null); // Data for view modal
   const [searchTerm, setSearchTerm] = useState('');
-  const [categoryFilter, setCategoryFilter] = useState('all');
-  const [statusFilter, setStatusFilter] = useState('all');
+  const [isActiveFilter, setIsActiveFilter] = useState<'true' | 'false'>('true'); // Simplified filter for is_active with only two values
   const [isLoadingUpdate, setIsLoadingUpdate] = useState(false);
   const [isLoadingView, setIsLoadingView] = useState(false);
   const [isLoadingDelete, setIsLoadingDelete] = useState<string | null>(null); // Track which puja is being deleted
 
   useEffect(() => {
-    dispatch(fetchPujas());
-  }, [dispatch]);
+    // Dispatch fetchPujas with is_active filter
+    dispatch(fetchPujas({ is_active: isActiveFilter === 'true' }));
+  }, [dispatch, isActiveFilter]);
 
   // Function to handle update modal opening
   const onUpdateModalOpen = async (pujaId: string, pujaData: any) => {
@@ -262,7 +262,7 @@ const PujaList: React.FC<PujaListProps> = ({ viewMode = 'grid' }) => {
   };
 
   const handleUpdateSuccess = () => {
-    dispatch(fetchPujas());
+    dispatch(fetchPujas({ is_active: isActiveFilter === 'true' }));
     onUpdateModalClose();
   };
 
@@ -301,7 +301,7 @@ const PujaList: React.FC<PujaListProps> = ({ viewMode = 'grid' }) => {
             if (deletePuja.fulfilled.match(result)) {
               console.log('Puja deleted successfully');
               // Fetch updated puja list from server to ensure data consistency
-              await dispatch(fetchPujas());
+              await dispatch(fetchPujas({ is_active: isActiveFilter === 'true' }));
               
               // Show success message
               Modal.success({
@@ -343,7 +343,7 @@ const PujaList: React.FC<PujaListProps> = ({ viewMode = 'grid' }) => {
   };
 
   // Filter pujas based on search term, category, and status with comprehensive null checks
-  const filteredPujas = (pujas ?? []).filter(puja => {
+  const filteredPujas = (pujas ?? []).filter((puja: Puja) => {
     // Ensure puja object exists and has basic structure
     if (!puja || typeof puja !== 'object') {
       return false;
@@ -365,15 +365,14 @@ const PujaList: React.FC<PujaListProps> = ({ viewMode = 'grid' }) => {
                          subHeading.toLowerCase().includes(searchTermSafe.toLowerCase()) ||
                          templeAddress.toLowerCase().includes(searchTermSafe.toLowerCase());
     
-    const pujaCategory = (puja?.category ?? 'general').toString().trim();
-    const matchesCategory = categoryFilter === 'all' || pujaCategory === categoryFilter;
+    // Removed category filter check since we're removing the category dropdown
     
+    // Use the isActiveFilter instead of statusFilter
     const isActive = Boolean(puja?.isActive);
-    const matchesStatus = statusFilter === 'all' || 
-                         (statusFilter === 'active' && isActive) || 
-                         (statusFilter === 'inactive' && !isActive);
+    const matchesStatus = (isActiveFilter === 'true' && isActive) || 
+                         (isActiveFilter === 'false' && !isActive);
     
-    return matchesSearch && matchesCategory && matchesStatus;
+    return matchesSearch && matchesStatus;
   });
 
   const formatCurrency = (amount: number | string | null | undefined) => {
@@ -429,29 +428,18 @@ const PujaList: React.FC<PujaListProps> = ({ viewMode = 'grid' }) => {
             placeholder="Search pujas..."
             value={searchTerm ?? ''}
             onChange={(e) => setSearchTerm(e?.target?.value?.toString()?.trim() ?? '')}
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent text-sm text-black placeholder-gray-400"
+            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent text-sm text-black placeholder-gray-400 bg-white"
           />
         </div>
+        {/* Removed the categoryFilter dropdown */}
+        {/* New is_active filter with only two values */}
         <select 
-          value={categoryFilter}
-          onChange={(e) => setCategoryFilter(e?.target?.value?.toString()?.trim() ?? 'all')}
-          className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent text-sm"
+          value={isActiveFilter}
+          onChange={(e) => setIsActiveFilter(e?.target?.value as 'true' | 'false')}
+          className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent text-sm bg-white text-gray-700"
         >
-          <option value="all">All Categories</option>
-          <option value="general">General</option>
-          <option value="prosperity">Prosperity</option>
-          <option value="health">Health</option>
-          <option value="education">Education</option>
-          <option value="spiritual">Spiritual</option>
-        </select>
-        <select 
-          value={statusFilter}
-          onChange={(e) => setStatusFilter(e?.target?.value?.toString()?.trim() ?? 'all')}
-          className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent text-sm"
-        >
-          <option value="all">All Status</option>
-          <option value="active">Active</option>
-          <option value="inactive">Inactive</option>
+          <option value="true">Active</option>
+          <option value="false">Inactive</option>
         </select>
       </div>
 

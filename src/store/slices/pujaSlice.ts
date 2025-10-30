@@ -74,9 +74,18 @@ export const createPuja = createAsyncThunk(
 // Async thunk for fetching pujas
 export const fetchPujas = createAsyncThunk(
   'puja/fetchPujas',
-  async (_, { rejectWithValue }) => {
+  async (params: { is_active?: boolean } | undefined, { rejectWithValue }) => {
     try {
-      const response = await axiosInstance.get('/api/v1/pujas');
+      const queryParams = new URLSearchParams();
+      if (params?.is_active !== undefined) {
+        queryParams.append('is_active', params.is_active.toString());
+      }
+      
+      const url = queryParams.toString() 
+        ? `/api/v1/pujas?${queryParams.toString()}` 
+        : '/api/v1/pujas';
+        
+      const response = await axiosInstance.get(url);
       return response?.data as Puja[];
     } catch (error: any) {
       return rejectWithValue(error.response?.data?.message || error.message);
