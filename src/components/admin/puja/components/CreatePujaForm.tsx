@@ -251,7 +251,8 @@ const CreatePujaForm: React.FC<CreatePujaFormProps> = ({ onSuccess }) => {
     accept: {
       'image/jpeg': [],
       'image/png': [],
-      'image/jpg': []
+      'image/jpg': [],
+      'image/webp': []
     },
     multiple: true,
     maxFiles: 6,
@@ -263,7 +264,7 @@ const CreatePujaForm: React.FC<CreatePujaFormProps> = ({ onSuccess }) => {
             if (error.code === 'file-too-large') {
               message.error(`File ${file.name} is too large. Maximum size is 10MB.`);
             } else if (error.code === 'file-invalid-type') {
-              message.error(`File ${file.name} has invalid type. Only JPEG, PNG are allowed.`);
+              message.error(`File ${file.name} has invalid type. Only JPEG, PNG, WebP are allowed.`);
             } else if (error.code === 'too-many-files') {
               message.error('Cannot upload more than 6 images.');
             }
@@ -292,7 +293,8 @@ const CreatePujaForm: React.FC<CreatePujaFormProps> = ({ onSuccess }) => {
     accept: {
       'image/jpeg': [],
       'image/png': [],
-      'image/jpg': []
+      'image/jpg': [],
+      'image/webp': []
     },
     multiple: false,
     maxSize: 10 * 1024 * 1024,
@@ -546,7 +548,7 @@ const CreatePujaForm: React.FC<CreatePujaFormProps> = ({ onSuccess }) => {
                   ? `Selected ${formData.pujaImages.length} of 6 images` 
                   : 'Click or drag to upload images (up to 6)'}
               </p>
-              <p className="text-xs text-orange-500">PNG, JPG, JPEG up to 10MB each</p>
+              <p className="text-xs text-orange-500">PNG, JPG, JPEG, WebP up to 10MB each</p>
             </div>
           </div>
           
@@ -649,7 +651,7 @@ const CreatePujaForm: React.FC<CreatePujaFormProps> = ({ onSuccess }) => {
                 <p className="mb-1 text-sm text-indigo-600 font-medium">
                   {formData.templeImage ? `Selected: ${formData.templeImage.name}` : 'Click or drag to upload Temple Image'}
                 </p>
-                <p className="text-xs text-indigo-500">PNG, JPG, JPEG up to 10MB</p>
+                <p className="text-xs text-indigo-500">PNG, JPG, JPEG, WebP up to 10MB</p>
               </div>
             </div>
             
