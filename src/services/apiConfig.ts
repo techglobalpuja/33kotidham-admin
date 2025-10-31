@@ -1,4 +1,4 @@
-import axios from 'axios';
+import axios, { InternalAxiosRequestConfig, AxiosResponse, AxiosError } from 'axios';
 
 export const API_BASE_URL = 'https://api.33kotidham.in';
 
@@ -10,10 +10,10 @@ export const axiosInstance = axios.create({
   },
 });
 
-axiosInstance.interceptors.request.use((config) => {
+axiosInstance.interceptors.request.use((config: InternalAxiosRequestConfig): InternalAxiosRequestConfig => {
   const token = localStorage.getItem('token');
   console.log("check token",token);
-  if (token) {
+  if (token && config.headers) {
     config.headers['Authorization'] = `Bearer ${token}`;
   }
   return config;
@@ -22,10 +22,10 @@ axiosInstance.interceptors.request.use((config) => {
 
 // Response interceptor to handle 401 unauthorized responses
 axiosInstance.interceptors.response.use(
-  (response) => {
+  (response: AxiosResponse): AxiosResponse => {
     return response;
   },
-  (error) => {
+  (error: AxiosError) => {
     if (error.response?.status === 401) {
       // Remove token from localStorage
       localStorage.removeItem('token');

@@ -53,6 +53,6 @@ export const isAuthenticated = (): boolean => {
 /**
  * Check if user has admin role
  */
-export const isAdmin = (user: any): boolean => {
-  return user && user.role === 'admin';
+export const isAdmin = (user: { role?: string } | null): boolean => {
+  return user ? user.role === 'admin' : false;
 };

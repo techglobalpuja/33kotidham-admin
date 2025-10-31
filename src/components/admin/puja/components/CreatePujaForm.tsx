@@ -450,6 +450,8 @@ const CreatePujaForm: React.FC<CreatePujaFormProps> = ({ onSuccess }) => {
         category: formData.category ?? ['general'], // ✅ string[] 
         plan_ids: formData.selectedPlanIds ?? [], // ✅ number[] - [1, 2, 3]
         chadawa_ids: formData.selectedChadawaIds ?? [], // ✅ NEW: chadawa IDs
+        is_active: formData.isActive , 
+        is_featured: formData.isFeatured , 
       } as any;
       
       console.log('Creating puja with data:', requestData);
@@ -816,7 +818,7 @@ const CreatePujaForm: React.FC<CreatePujaFormProps> = ({ onSuccess }) => {
             maxTagCount={3}
           >
             {plans && plans.length > 0 ? (
-              plans.map((plan) => (
+              plans.map((plan: any) => (
                 <Option key={plan.id} value={plan.id}>
                   {plan.name} - ₹{plan.actual_price}
                 </Option>
@@ -856,7 +858,7 @@ const CreatePujaForm: React.FC<CreatePujaFormProps> = ({ onSuccess }) => {
             maxTagCount={3}
           >
             {chadawas && chadawas.length > 0 ? (
-              chadawas.map((chadawa) => (
+              chadawas.map((chadawa: any) => (
                 <Option key={chadawa.id} value={chadawa.id}>
                   {chadawa.name}
                 </Option>

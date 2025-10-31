@@ -1,11 +1,12 @@
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useSelector } from 'react-redux';
+import { RootState } from '@/store';
 import { isAuthenticated } from '@/utils/auth';
 
 export const useAuth = () => {
   const router = useRouter();
-  const { user } = useSelector((state: any) => state.auth);
+  const { user } = useSelector((state: RootState) => state.auth);
 
   const checkAuth = () => {
     const authenticated = isAuthenticated() && user;
@@ -37,4 +38,6 @@ export const useRedirectIfAuthenticated = () => {
       router.push('/admin');
     }
   }, [authenticated, router]);
+
+  return { isAuthenticated: authenticated, user };
 };

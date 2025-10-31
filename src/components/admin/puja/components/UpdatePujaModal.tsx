@@ -1274,7 +1274,7 @@ const UpdatePujaModal: React.FC<UpdatePujaModalProps> = ({
                 maxTagCount={3}
               >
                 {plans && plans.length > 0 ? (
-                  plans.map((plan) => (
+                  plans.map((plan: any) => (
                     <Option key={plan.id} value={plan.id}>
                       {plan.name} - ₹{plan.actual_price}
                     </Option>
@@ -1432,7 +1432,7 @@ const UpdatePujaModal: React.FC<UpdatePujaModalProps> = ({
                 maxTagCount={3}
               >
                 {chadawas && chadawas.length > 0 ? (
-                  chadawas.map((chadawa) => (
+                  chadawas.map((chadawa: any) => (
                     <Option key={chadawa.id} value={chadawa.id}>
                       {chadawa.name}
                     </Option>

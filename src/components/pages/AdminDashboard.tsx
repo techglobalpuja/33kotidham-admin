@@ -25,7 +25,7 @@ interface AdminDashboardProps {
 }
 
 const AdminDashboard: React.FC<AdminDashboardProps> = () => {
-  const { isAuthenticated, user } = useRequireAuth();
+  const { isAuthenticated } = useRequireAuth();
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();

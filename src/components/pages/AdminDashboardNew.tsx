@@ -23,11 +23,15 @@ const AdminDashboard: React.FC<AdminDashboardProps> = () => {
     totalPujas: 156,
     totalEarnings: 2847593,
     totalOrders: 3456,
+    totalPujaBookings: 892,
+    totalChadawaBookings: 1204,
     monthlyGrowth: {
       users: 12.5,
       pujas: 8.3,
       earnings: 15.7,
-      orders: 11.2
+      orders: 11.2,
+      pujaBookings: 9.7,
+      chadawaBookings: 14.2
     }
   };
 

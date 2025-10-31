@@ -1,4 +1,5 @@
 import { createSlice, PayloadAction, createAsyncThunk } from '@reduxjs/toolkit';
+import { AxiosError } from 'axios';
 import { axiosInstance } from '@/services/apiConfig';
 import { storeAuthToken, getAuthToken, clearAuthToken } from '@/utils/auth';
 
@@ -51,8 +52,11 @@ export const signupUser = createAsyncThunk(
         password,
       });
       return response?.data as User;
-    } catch (error: any) {
-      return rejectWithValue(error.response?.data?.message || error.message);
+    } catch (error: unknown) {
+      if (error instanceof AxiosError) {
+        return rejectWithValue(error.response?.data?.message || error.message);
+      }
+      return rejectWithValue('An unknown error occurred');
     }
   }
 );
@@ -73,8 +77,11 @@ export const adminLogin = createAsyncThunk(
         password,
       });
       return response?.data as User;
-    } catch (error: any) {
-      return rejectWithValue(error.response?.data?.message || error.message);
+    } catch (error: unknown) {
+      if (error instanceof AxiosError) {
+        return rejectWithValue(error.response?.data?.message || error.message);
+      }
+      return rejectWithValue('An unknown error occurred');
     }
   }
 );
@@ -87,8 +94,11 @@ export const adminLogout = createAsyncThunk(
       // Clear token from localStorage
       clearAuthToken();
       return true;
-    } catch (error: any) {
-      return rejectWithValue(error.message);
+    } catch (error: unknown) {
+      if (error instanceof Error) {
+        return rejectWithValue(error.message);
+      }
+      return rejectWithValue('An unknown error occurred');
     }
   }
 );

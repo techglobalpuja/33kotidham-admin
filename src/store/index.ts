@@ -9,15 +9,7 @@ import blogReducer from './slices/blogSlice';
 import categoryReducer from './slices/categorySlice';
 import bookingReducer from './slices/bookingSlice';
 import templeReducer from './slices/templeSlice';
-import authReducer from '@/store/slices/authSlice';
-import pujaReducer from '@/store/slices/pujaSlice';
-import planReducer from '@/store/slices/planSlice';
-import chadawaReducer from '@/store/slices/chadawaSlice';
-import blogReducer from '@/store/slices/blogSlice';
-import categoryReducer from '@/store/slices/categorySlice';
-import bookingReducer from '@/store/slices/bookingSlice';
-import templeReducer from '@/store/slices/templeSlice';
-import userReducer from '@/store/slices/userSlice';
+import userReducer from './slices/userSlice';
 
 const store = configureStore({
   reducer: {
