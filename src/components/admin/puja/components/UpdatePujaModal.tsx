@@ -25,6 +25,7 @@ import { RootState } from '@/store';
 import { fetchPujaById, updatePuja, uploadPujaImages, deletePujaImage } from '@/store/slices/pujaSlice';
 import { fetchPlans } from '@/store/slices/planSlice';
 import { fetchChadawas } from '@/store/slices/chadawaSlice';
+import { uploadTempleImage } from '@/store/slices/templeSlice';
 import { AppDispatch } from '@/store';
 
 const { Text } = Typography;
@@ -141,6 +142,8 @@ interface PujaFormData {
   images?: any[] | null; // ✅ EXISTING IMAGES
   pujaImages?: File[] | null; // ✅ NEW FILES
   templeImage?: string | null;
+  templeImageFile?: File | null; // ✅ NEW: Store the file for upload
+  templeImageUrl?: string | null; // ✅ NEW: Store uploaded URL
   templeAddress?: string | null;
   templeDescription?: string | null;
   benefits?: Benefit[] | null;
@@ -197,6 +200,8 @@ const UpdatePujaModal: React.FC<UpdatePujaModalProps> = ({
     images: [], // ✅ EXISTING IMAGES
     pujaImages: [], // ✅ NEW FILES
     templeImage: '',
+    templeImageFile: null,
+    templeImageUrl: '',
     templeAddress: '',
     templeDescription: '',
     benefits: [
@@ -379,6 +384,8 @@ const UpdatePujaModal: React.FC<UpdatePujaModalProps> = ({
           images: safeImages, // ✅ EXISTING IMAGES
           pujaImages: [],
           templeImage: (pujaData.temple_image_url ?? '').toString().trim(),
+          templeImageFile: null,
+          templeImageUrl: (pujaData.temple_image_url ?? '').toString().trim(),
           templeAddress: (pujaData.temple_address ?? '').toString().trim(),
           templeDescription: (pujaData.temple_description ?? '').toString().trim(),
           benefits: safeBenefits,
@@ -479,7 +486,8 @@ const UpdatePujaModal: React.FC<UpdatePujaModalProps> = ({
     accept: {
       'image/jpeg': [],
       'image/png': [],
-      'image/jpg': []
+      'image/jpg': [],
+      'image/webp': []
     },
     multiple: true,
     maxFiles: 6,
@@ -492,7 +500,7 @@ const UpdatePujaModal: React.FC<UpdatePujaModalProps> = ({
               if (error.code === 'file-too-large') {
                 message.error(`File ${file.name} is too large. Maximum size is 10MB.`);
               } else if (error.code === 'file-invalid-type') {
-                message.error(`File ${file.name} has invalid type. Only JPEG, PNG are allowed.`);
+                message.error(`File ${file.name} has invalid type. Only JPEG, PNG, WebP are allowed.`);
               } else if (error.code === 'too-many-files') {
                 message.error('Cannot upload more than 6 images.');
               }
@@ -527,11 +535,12 @@ const UpdatePujaModal: React.FC<UpdatePujaModalProps> = ({
     accept: {
       'image/jpeg': [],
       'image/png': [],
-      'image/jpg': []
+      'image/jpg': [],
+      'image/webp': []
     },
     multiple: false,
     maxSize: 10 * 1024 * 1024,
-    onDrop: (acceptedFiles, rejectedFiles) => {
+    onDrop: async (acceptedFiles, rejectedFiles) => {
       try {
         if (rejectedFiles.length > 0) {
           rejectedFiles.forEach(({ file, errors }) => {
@@ -539,15 +548,37 @@ const UpdatePujaModal: React.FC<UpdatePujaModalProps> = ({
               if (error.code === 'file-too-large') {
                 message.error(`File ${file.name} is too large. Maximum size is 10MB.`);
               } else if (error.code === 'file-invalid-type') {
-                message.error(`File ${file.name} has invalid type. Only JPEG, PNG are allowed.`);
+                message.error(`File ${file.name} has invalid type. Only JPEG, PNG, WebP are allowed.`);
               }
             });
           });
         }
         
         if (Array.isArray(acceptedFiles) && acceptedFiles.length > 0 && acceptedFiles[0]) {
-          const fileName = acceptedFiles[0]?.name?.toString()?.trim() || '';
-          handleInputChange('templeImage', fileName);
+          const file = acceptedFiles[0];
+          handleInputChange('templeImageFile', file);
+          handleInputChange('templeImage', file.name);
+          
+          // Upload temple image immediately
+          message.loading({ content: 'Uploading temple image...', key: 'templeImageUpload' });
+          try {
+            const uploadResult = await dispatch(uploadTempleImage(file)) as any;
+            
+            if (uploadTempleImage.fulfilled.match(uploadResult)) {
+              const { file_url } = uploadResult.payload;
+              handleInputChange('templeImageUrl', file_url);
+              message.success({ content: 'Temple image uploaded successfully!', key: 'templeImageUpload' });
+            } else {
+              message.error({ content: 'Failed to upload temple image', key: 'templeImageUpload' });
+              handleInputChange('templeImageFile', null);
+              handleInputChange('templeImage', '');
+            }
+          } catch (error) {
+            console.error('Temple image upload error:', error);
+            message.error({ content: 'Error uploading temple image', key: 'templeImageUpload' });
+            handleInputChange('templeImageFile', null);
+            handleInputChange('templeImage', '');
+          }
         }
       } catch (error) {
         console.error('Error handling temple image drop:', error);
@@ -711,27 +742,27 @@ const UpdatePujaModal: React.FC<UpdatePujaModalProps> = ({
 
   // ✅ PERFECT: UPDATE formData.images ONLY!
   const handleDeleteExistingImage = async (imageId: number) => {
-  try {
-    console.log(`🗑️ Deleting image ${imageId} from SERVER`);
-    const result = await dispatch(deletePujaImage({ pujaId: safePujaId, imageId }));
-    
-    if (deletePujaImage.fulfilled.match(result)) {
-      console.log("check hii")
-      console.log(`✅ Image ${imageId} DELETED FROM SERVER`);
+    try {
+      console.log(`🗑️ Deleting image ${imageId} from SERVER`);
+      const result = await dispatch(deletePujaImage({ pujaId: safePujaId, imageId }));
       
-      setFormData((prev) => {
-        if (prev.images && Array.isArray(prev.images)) {
-          const updatedImages = prev.images.filter((image: any) => image.id !== imageId);
-          console.log(`✅ formData.images updated: ${updatedImages} IMAGES LEFT`,updatedImages);
-          return { ...prev, images: updatedImages };
-        }
-        return prev;
-      });
+      if (deletePujaImage.fulfilled.match(result)) {
+        console.log("check hii")
+        console.log(`✅ Image ${imageId} DELETED FROM SERVER`);
+        
+        setFormData((prev) => {
+          if (prev.images && Array.isArray(prev.images)) {
+            const updatedImages = prev.images.filter((image: any) => image.id !== imageId);
+            console.log(`✅ formData.images updated: ${updatedImages} IMAGES LEFT`,updatedImages);
+            return { ...prev, images: updatedImages };
+          }
+          return prev;
+        });
+      }
+    } catch (error) {
+      console.error(`❌ Error deleting image ${imageId}:`, error);
     }
-  } catch (error) {
-    console.error(`❌ Error deleting image ${imageId}:`, error);
-  }
-};
+  };
 
   const createImagePreviewUrl = (file: File): string => {
     return URL.createObjectURL(file);
@@ -787,7 +818,7 @@ const UpdatePujaModal: React.FC<UpdatePujaModalProps> = ({
         description: (formData.about ?? '').trim(),
         date: formData.date || null, // ✅ CHANGED: just date
         time: formData.time || null, // ✅ CHANGED: just time
-        temple_image_url: (formData.templeImage ?? '').trim(),
+        temple_image_url: formData.templeImageUrl || (formData.templeImage ?? '').trim(),
         temple_address: (formData.templeAddress ?? '').trim(),
         temple_description: (formData.templeDescription ?? '').trim(),
         benefits: benefitsToUpdate,
@@ -960,15 +991,10 @@ const UpdatePujaModal: React.FC<UpdatePujaModalProps> = ({
                   <svg className="w-8 h-8 mb-2 text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
                   </svg>
-                  <p className="mb-1 text-sm font-medium text-orange-600">
-                    {(formData.pujaImages && Array.isArray(formData.pujaImages) && formData.pujaImages.length > 0) 
-                      ? `Selected ${formData.pujaImages.length} of 6 new images` 
-                      : 'Click or drag to upload new images (up to 6)'}
+                  <p className="mb-1 text-sm text-orange-600 font-medium">
+                    {isDragActive ? 'Drop images here...' : 'Click or drag to upload Puja Images'}
                   </p>
-                  <p className="text-xs text-orange-500">PNG, JPG, JPEG up to 10MB each</p>
-                  {imagesChanged && (
-                    <p className="text-xs text-red-600 font-bold mt-1">⚠️ Previous images will be deleted and replaced</p>
-                  )}
+                  <p className="text-xs text-orange-500">PNG, JPG, JPEG, WebP up to 10MB (max 6 images)</p>
                 </div>
               </div>
               
@@ -1096,26 +1122,62 @@ const UpdatePujaModal: React.FC<UpdatePujaModalProps> = ({
                         ? `Selected: ${formData.templeImage}` 
                         : 'Click or drag to upload Temple Image'}
                     </p>
-                    <p className="text-xs text-indigo-500">PNG, JPG, JPEG up to 10MB</p>
+                    <p className="text-xs text-indigo-500">PNG, JPG, JPEG, WebP up to 10MB</p>
                   </div>
                 </div>
                 
                 {formData.templeImage && formData.templeImage.toString().trim() && (
-                  <div className="mt-4">
+                  <div className="mt-4 space-y-3">
+                    {/* Image Preview */}
+                    <div className="relative w-full h-48 bg-gray-100 rounded-lg overflow-hidden border-2 border-indigo-200">
+                      {formData.templeImageFile ? (
+                        <img
+                          src={createImagePreviewUrl(formData.templeImageFile)}
+                          alt="Temple preview"
+                          className="w-full h-full object-cover"
+                          onError={(e) => {
+                            e.currentTarget.style.display = 'none';
+                          }}
+                        />
+                      ) : formData.templeImageUrl ? (
+                        <img
+                          src={`https://api.33kotidham.in/${formData.templeImageUrl}`}
+                          alt="Temple preview"
+                          className="w-full h-full object-cover"
+                          onError={(e) => {
+                            e.currentTarget.style.display = 'none';
+                          }}
+                        />
+                      ) : null}
+                    </div>
+                    
+                    {/* File Info */}
                     <div className="bg-white p-3 rounded-lg border border-indigo-200">
                       <div className="flex items-center gap-2">
                         <svg className="w-4 h-4 text-indigo-500" fill="currentColor" viewBox="0 0 20 20">
                           <path fillRule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clipRule="evenodd" />
                         </svg>
                         <span className="text-sm text-gray-600 truncate flex-1">{formData.templeImage}</span>
+                        {formData.templeImageUrl && (
+                          <span className="text-xs text-green-600 font-medium">✓ Uploaded</span>
+                        )}
                         <button
                           type="button"
-                          onClick={() => handleInputChange('templeImage', '')}
+                          onClick={() => {
+                            handleInputChange('templeImage', '');
+                            handleInputChange('templeImageFile', null);
+                            handleInputChange('templeImageUrl', '');
+                          }}
                           className="text-red-500 hover:text-red-700 text-sm font-medium"
                         >
                           ✕
                         </button>
                       </div>
+                      {formData.templeImageUrl && (
+                        <div className="mt-2 text-xs text-gray-500 truncate">
+                          URL: {formData.templeImageUrl}
+                        </div>
+                      )}
                     </div>
                   </div>
                 )}
