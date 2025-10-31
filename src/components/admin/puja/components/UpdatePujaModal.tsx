@@ -742,27 +742,27 @@ const UpdatePujaModal: React.FC<UpdatePujaModalProps> = ({
 
   // ✅ PERFECT: UPDATE formData.images ONLY!
   const handleDeleteExistingImage = async (imageId: number) => {
-  try {
-    console.log(`🗑️ Deleting image ${imageId} from SERVER`);
-    const result = await dispatch(deletePujaImage({ pujaId: safePujaId, imageId }));
-    
-    if (deletePujaImage.fulfilled.match(result)) {
-      console.log("check hii")
-      console.log(`✅ Image ${imageId} DELETED FROM SERVER`);
+    try {
+      console.log(`🗑️ Deleting image ${imageId} from SERVER`);
+      const result = await dispatch(deletePujaImage({ pujaId: safePujaId, imageId }));
       
-      setFormData((prev) => {
-        if (prev.images && Array.isArray(prev.images)) {
-          const updatedImages = prev.images.filter((image: any) => image.id !== imageId);
-          console.log(`✅ formData.images updated: ${updatedImages} IMAGES LEFT`,updatedImages);
-          return { ...prev, images: updatedImages };
-        }
-        return prev;
-      });
+      if (deletePujaImage.fulfilled.match(result)) {
+        console.log("check hii")
+        console.log(`✅ Image ${imageId} DELETED FROM SERVER`);
+        
+        setFormData((prev) => {
+          if (prev.images && Array.isArray(prev.images)) {
+            const updatedImages = prev.images.filter((image: any) => image.id !== imageId);
+            console.log(`✅ formData.images updated: ${updatedImages} IMAGES LEFT`,updatedImages);
+            return { ...prev, images: updatedImages };
+          }
+          return prev;
+        });
+      }
+    } catch (error) {
+      console.error(`❌ Error deleting image ${imageId}:`, error);
     }
-  } catch (error) {
-    console.error(`❌ Error deleting image ${imageId}:`, error);
-  }
-};
+  };
 
   const createImagePreviewUrl = (file: File): string => {
     return URL.createObjectURL(file);
@@ -991,6 +991,12 @@ const UpdatePujaModal: React.FC<UpdatePujaModalProps> = ({
                   <svg className="w-8 h-8 mb-2 text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
                   </svg>
+                  <p className="mb-1 text-sm text-orange-600 font-medium">
+                    {isDragActive ? 'Drop images here...' : 'Click or drag to upload Puja Images'}
+                  </p>
+                  <p className="text-xs text-orange-500">PNG, JPG, JPEG, WebP up to 10MB (max 6 images)</p>
+                </div>
+              </div>
               
               {/* New Images Preview */}
               {formData.pujaImages && Array.isArray(formData.pujaImages) && formData.pujaImages.length > 0 && (
