@@ -8,6 +8,7 @@ import blogReducer from '@/store/slices/blogSlice';
 import categoryReducer from '@/store/slices/categorySlice';
 import bookingReducer from '@/store/slices/bookingSlice';
 import templeReducer from '@/store/slices/templeSlice';
+import userReducer from '@/store/slices/userSlice';
 
 const store = configureStore({
   reducer: {
@@ -19,6 +20,7 @@ const store = configureStore({
     category: categoryReducer,
     booking: bookingReducer,
     temple: templeReducer,
+    user: userReducer,
   },
 });
 

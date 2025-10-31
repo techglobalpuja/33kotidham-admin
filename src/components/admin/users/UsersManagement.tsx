@@ -1,39 +1,39 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
+import { fetchUsers } from '@/store/slices/userSlice';
+import { AppDispatch, RootState } from '@/store';
 import Button from '@/components/ui/Button';
 import EditText from '@/components/ui/EditText';
 
 const UsersManagement: React.FC = () => {
+  const dispatch = useDispatch<AppDispatch>();
+  const { users, isLoading, error } = useSelector((state: RootState) => state.user);
   const [activeSubTab, setActiveSubTab] = useState<'all' | 'add'>('all');
+  const [searchQuery, setSearchQuery] = useState('');
 
-  // Mock user data
-  const mockUsers = [
-    {
-      id: '1',
-      name: 'John Doe',
-      email: 'john@example.com',
-      role: 'Admin',
-      status: 'Active',
-      joinedDate: '2024-01-15'
-    },
-    {
-      id: '2',
-      name: 'Jane Smith',
-      email: 'jane@example.com',
-      role: 'User',
-      status: 'Active',
-      joinedDate: '2024-01-10'
-    },
-    {
-      id: '3',
-      name: 'Robert Johnson',
-      email: 'robert@example.com',
-      role: 'User',
-      status: 'Inactive',
-      joinedDate: '2024-01-08'
+  // Fetch users on component mount
+  useEffect(() => {
+    dispatch(fetchUsers({ skip: 0, limit: 100 }));
+  }, [dispatch]);
+
+  // Format date for display
+  const formatDate = (dateString: string) => {
+    try {
+      const date = new Date(dateString);
+      return date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+    } catch {
+      return dateString;
     }
-  ];
+  };
+
+  // Filter users based on search query
+  const filteredUsers = users?.filter(user => 
+    user.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    user.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    user.mobile.includes(searchQuery)
+  ) || [];
 
   return (
     <div className="space-y-6">
@@ -64,88 +64,121 @@ const UsersManagement: React.FC = () => {
               <EditText
                 placeholder="Search users..."
                 className="w-48"
+                value={searchQuery}
+                onChange={(value) => setSearchQuery(value)}
               />
-              <Button variant="outline" size="sm">
-                Filter
+              <Button variant="outline" size="sm" onClick={() => dispatch(fetchUsers({ skip: 0, limit: 100 }))}>
+                Refresh
               </Button>
+            </div>
+            <div className="text-sm text-gray-600">
+              Total Users: {filteredUsers.length}
             </div>
           </div>
 
           {/* Users List */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    User
-                  </th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Email
-                  </th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Role
-                  </th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Status
-                  </th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Joined Date
-                  </th>
-                  <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Actions
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {mockUsers.map((user) => (
-                  <tr key={user.id}>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center">
-                        <div className="flex-shrink-0 h-10 w-10">
-                          <div className="h-10 w-10 rounded-full bg-orange-100 flex items-center justify-center">
-                            <span className="text-orange-600 font-medium">
-                              {user.name.charAt(0)}
-                            </span>
+          {isLoading ? (
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8 text-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500 mx-auto"></div>
+              <p className="mt-4 text-gray-600">Loading users...</p>
+            </div>
+          ) : error ? (
+            <div className="bg-white rounded-xl shadow-sm border border-red-200 p-8 text-center">
+              <p className="text-red-600">Error: {error}</p>
+              <Button variant="primary" className="mt-4" onClick={() => dispatch(fetchUsers({ skip: 0, limit: 100 }))}>
+                Retry
+              </Button>
+            </div>
+          ) : filteredUsers.length === 0 ? (
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8 text-center">
+              <p className="text-gray-600">No users found</p>
+            </div>
+          ) : (
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      User
+                    </th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Email / Mobile
+                    </th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Role
+                    </th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Status
+                    </th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Joined Date
+                    </th>
+                    <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Actions
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {filteredUsers.map((user) => (
+                    <tr key={user.id}>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="flex items-center">
+                          <div className="flex-shrink-0 h-10 w-10">
+                            <div className="h-10 w-10 rounded-full bg-orange-100 flex items-center justify-center">
+                              <span className="text-orange-600 font-medium">
+                                {user.name.charAt(0)}
+                              </span>
+                            </div>
+                          </div>
+                          <div className="ml-4">
+                            <div className="text-sm font-medium text-gray-900">{user.name}</div>
                           </div>
                         </div>
-                        <div className="ml-4">
-                          <div className="text-sm font-medium text-gray-900">{user.name}</div>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-500">{user.email}</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                        {user.role}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                        user.status === 'Active' 
-                          ? 'bg-green-100 text-green-800' 
-                          : 'bg-red-100 text-red-800'
-                      }`}>
-                        {user.status}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {user.joinedDate}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                      <Button variant="outline" size="sm" className="mr-2">
-                        Edit
-                      </Button>
-                      <Button variant="danger" size="sm">
-                        Delete
-                      </Button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm text-gray-900">{user.email || 'N/A'}</div>
+                        <div className="text-sm text-gray-500">{user.mobile}</div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium capitalize ${
+                          user.role === 'super_admin' ? 'bg-purple-100 text-purple-800' :
+                          user.role === 'admin' ? 'bg-blue-100 text-blue-800' :
+                          'bg-gray-100 text-gray-800'
+                        }`}>
+                          {user.role.replace('_', ' ')}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                          user.is_active 
+                            ? 'bg-green-100 text-green-800' 
+                            : 'bg-red-100 text-red-800'
+                        }`}>
+                          {user.is_active ? 'Active' : 'Inactive'}
+                        </span>
+                        {user.email_verified && (
+                          <span className="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                            ✓ Verified
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {formatDate(user.created_at)}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                        <Button variant="outline" size="sm" className="mr-2">
+                          Edit
+                        </Button>
+                        <Button variant="danger" size="sm">
+                          Delete
+                        </Button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </>
       ) : (
         <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-200">
