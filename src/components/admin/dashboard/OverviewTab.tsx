@@ -24,25 +24,32 @@ const OverviewTab: React.FC<OverviewTabProps> = ({ stats }) => {
       color: 'bg-green-500'
     },
     {
+      title: 'Puja Bookings',
+      value: stats.totalPujaBookings.toLocaleString(),
+      change: `${stats.monthlyGrowth.pujaBookings}%`,
+      icon: '📦',
+      color: 'bg-purple-500'
+    },
+    {
+      title: 'Chadawa Bookings',
+      value: stats.totalChadawaBookings.toLocaleString(),
+      change: `${stats.monthlyGrowth.chadawaBookings}%`,
+      icon: '🛍️',
+      color: 'bg-orange-500'
+    },
+    {
       title: 'Total Earnings',
       value: `₹${(stats.totalEarnings / 100000).toFixed(2)}L`,
       change: `${stats.monthlyGrowth.earnings}%`,
       icon: '💰',
       color: 'bg-yellow-500'
-    },
-    {
-      title: 'Total Orders',
-      value: stats.totalOrders.toLocaleString(),
-      change: `${stats.monthlyGrowth.orders}%`,
-      icon: '📋',
-      color: 'bg-purple-500'
     }
   ];
 
   return (
     <div className="space-y-6">
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
         {statCards.map((card, index) => (
           <div key={index} className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
             <div className="flex items-center justify-between">

@@ -6,11 +6,13 @@ import { AdminStats } from '@/types';
 import AdminLayout from '@/components/admin/layout/AdminLayout';
 import OverviewTab from '@/components/admin/dashboard/OverviewTab';
 import PujaManagement from '@/components/admin/puja/PujaManagement';
+import PujaProcessManagement from '@/components/admin/puja-process/PujaProcessManagement';
 import PlanManagement from '@/components/admin/plan/PlanManagement';
 import ChawadaManagement from '@/components/admin/chawada/ChawadaManagement';
 import ProductManagement from '@/components/admin/product/ProductManagement';
 import UsersManagement from '@/components/admin/users/UsersManagement';
-import BookingManagement from '@/components/admin/bookings/BookingManagement';
+import PujaBookingManagement from '@/components/admin/puja-bookings/PujaBookingManagement';
+import ChadawaBookingManagement from '@/components/admin/chadawa-bookings/ChadawaBookingManagement';
 import ContentManagement from '@/components/admin/content/ContentManagement';
 import BlogManagement from '@/components/admin/blog/BlogManagement';
 import TempleManagement from '@/components/admin/temple/TempleManagement';
@@ -31,7 +33,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = () => {
   // Get initial tab from URL or default to 'overview'
   const getInitialTab = () => {
     const tabParam = searchParams.get('tab');
-    const validTabs = ['overview', 'pujas', 'plans', 'chawada', 'products', 'users', 'orders', 'content', 'blogs', 'temples', 'analytics'];
+    const validTabs = ['overview', 'pujas', 'puja-process', 'plans', 'chawada', 'products', 'users', 'puja-bookings', 'chadawa-bookings', 'content', 'blogs', 'temples', 'analytics'];
     return tabParam && validTabs.includes(tabParam) ? tabParam : 'overview';
   };
   
@@ -67,11 +69,15 @@ const AdminDashboard: React.FC<AdminDashboardProps> = () => {
     totalPujas: 156,
     totalEarnings: 2847593,
     totalOrders: 3456,
+    totalPujaBookings: 2100,
+    totalChadawaBookings: 1356,
     monthlyGrowth: {
       users: 12.5,
       pujas: 8.3,
       earnings: 15.7,
-      orders: 11.2
+      orders: 11.2,
+      pujaBookings: 11.2,
+      chadawaBookings: 9.8
     }
   };
 
@@ -81,6 +87,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = () => {
         return <OverviewTab stats={adminStats} />;
       case 'pujas':
         return <PujaManagement />;
+      case 'puja-process':
+        return <PujaProcessManagement />;
       case 'plans':
         return <PlanManagement />;
       case 'chawada':
@@ -89,8 +97,10 @@ const AdminDashboard: React.FC<AdminDashboardProps> = () => {
         return <ProductManagement />;
       case 'users':
         return <UsersManagement />;
-      case 'orders':
-        return <BookingManagement />;
+      case 'puja-bookings':
+        return <PujaBookingManagement />;
+      case 'chadawa-bookings':
+        return <ChadawaBookingManagement />;
       case 'content':
         return <ContentManagement />;
       case 'blogs':
@@ -292,28 +302,28 @@ const AdminDashboard: React.FC<AdminDashboardProps> = () => {
               </button>
               
               <button
-                onClick={() => handleTabChange('users')}
+                onClick={() => handleTabChange('puja-bookings')}
                 className="p-4 bg-gradient-to-r from-blue-100 to-blue-200 rounded-lg hover:from-blue-200 hover:to-blue-300 transition-all duration-200 group"
               >
                 <div className="text-center">
                   <div className="w-8 h-8 mx-auto mb-2 text-blue-600 group-hover:scale-110 transition-transform duration-200">
                     👥
                   </div>
-                  <p className="text-sm font-medium text-gray-900">Check Bookings</p>
+                  <p className="text-sm font-medium text-gray-900">Check Puja Bookings</p>
                 </div>
               </button>
               
-              {/* <button
-                onClick={() => handleTabChange('content')}
-                className="p-4 bg-gradient-to-r from-green-100 to-green-200 rounded-lg hover:from-green-200 hover:to-green-300 transition-all duration-200 group"
+              <button
+                onClick={() => handleTabChange('chadawa-bookings')}
+                className="p-4 bg-gradient-to-r from-purple-100 to-purple-200 rounded-lg hover:from-purple-200 hover:to-purple-300 transition-all duration-200 group"
               >
                 <div className="text-center">
-                  <div className="w-8 h-8 mx-auto mb-2 text-green-600 group-hover:scale-110 transition-transform duration-200">
-                    📁
+                  <div className="w-8 h-8 mx-auto mb-2 text-purple-600 group-hover:scale-110 transition-transform duration-200">
+                    🛍️
                   </div>
-                  <p className="text-sm font-medium text-gray-900">Upload Content</p>
+                  <p className="text-sm font-medium text-gray-900">Check Chadawa Bookings</p>
                 </div>
-              </button> */}
+              </button>
             </div>
           </div>
         </div>

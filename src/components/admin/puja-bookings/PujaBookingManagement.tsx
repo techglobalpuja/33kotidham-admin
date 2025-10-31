@@ -3,35 +3,38 @@
 import React from 'react';
 import { useDispatch } from 'react-redux';
 import { AppDispatch } from '@/store';
-import { fetchBookings } from '@/store/slices/bookingSlice';
-import Button from '@/components/ui/Button';
+import { fetchPujaBookings } from '@/store/slices/bookingSlice';
 import BookingList from './components/BookingList';
 
-const BookingManagement: React.FC = () => {
+const PujaBookingManagement: React.FC = () => {
   const dispatch = useDispatch<AppDispatch>();
+
+  React.useEffect(() => {
+    dispatch(fetchPujaBookings());
+  }, [dispatch]);
 
   return (
     <div className="space-y-6">
-      {/* Header */ }
+      {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <h2 className="text-2xl font-bold text-gray-900">Booking Management</h2>
+        <h2 className="text-2xl font-bold text-gray-900">Puja Booking Management</h2>
       </div>
 
-      {/* Booking Management Section */ }
+      {/* Puja Booking Management Section */}
       <div className="bg-white rounded-xl shadow-lg border border-orange-100">
         <div className="p-6">
           <div className="flex justify-between items-center mb-6">
             <div>
-              <h2 className="text-xl font-semibold text-gray-900">All Bookings</h2>
-              <p className="text-sm text-gray-600 mt-1">Manage your customer bookings</p>
+              <h2 className="text-xl font-semibold text-gray-900">All Puja Bookings</h2>
+              <p className="text-sm text-gray-600 mt-1">Manage your puja customer bookings</p>
             </div>
           </div>
 
-          <BookingList />
+          <BookingList bookingType="puja" />
         </div>
       </div>
     </div>
   );
 };
 
-export default BookingManagement;
+export default PujaBookingManagement;

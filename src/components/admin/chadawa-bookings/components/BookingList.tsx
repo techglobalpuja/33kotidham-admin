@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { RootState } from '@/store';
-import { fetchBookings, fetchBookingById } from '@/store/slices/bookingSlice';
-import ViewBookingModal from '@/components/admin/bookings/components/ViewBookingModal';
+import { fetchBookingById, fetchChadawaBookings } from '@/store/slices/bookingSlice';
+import ViewBookingModal from '@/components/admin/chadawa-bookings/components/ViewBookingModal';
 import type { AppDispatch } from '@/store';
 import type { BookingState } from '@/types';
 
@@ -90,9 +90,10 @@ interface Booking {
 
 interface BookingListProps {
   viewMode?: 'table';
+  bookingType?: 'chadawa'; // Specific to chadawa bookings
 }
 
-const BookingList: React.FC<BookingListProps> = ({ viewMode = 'table' }) => {
+const BookingList: React.FC<BookingListProps> = ({ viewMode = 'table', bookingType = 'all' }) => {
   const dispatch = useDispatch<AppDispatch>();
   const { bookings: rawBookings, isLoading } = useSelector((state: RootState) => state.booking as BookingState);
   
@@ -242,7 +243,7 @@ const BookingList: React.FC<BookingListProps> = ({ viewMode = 'table' }) => {
   const [isLoadingView, setIsLoadingView] = useState(false);
 
   useEffect(() => {
-    dispatch(fetchBookings());
+    dispatch(fetchChadawaBookings());
   }, [dispatch]);
 
   // Function to handle view modal opening

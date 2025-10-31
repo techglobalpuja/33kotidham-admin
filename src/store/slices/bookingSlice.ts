@@ -133,6 +133,32 @@ export const fetchBookings = createAsyncThunk(
   }
 );
 
+// Async thunk for fetching puja bookings
+export const fetchPujaBookings = createAsyncThunk(
+  'booking/fetchPujaBookings',
+  async (_, { rejectWithValue }) => {
+    try {
+      const response = await axiosInstance.get('/api/v1/bookings/puja');
+      return response?.data as Booking[];
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || error.message);
+    }
+  }
+);
+
+// Async thunk for fetching chadawa bookings
+export const fetchChadawaBookings = createAsyncThunk(
+  'booking/fetchChadawaBookings',
+  async (_, { rejectWithValue }) => {
+    try {
+      const response = await axiosInstance.get('/api/v1/bookings/temple-chadawa');
+      return response?.data as Booking[];
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || error.message);
+    }
+  }
+);
+
 // Async thunk for fetching a single booking by ID
 export const fetchBookingById = createAsyncThunk(
   'booking/fetchBookingById',
@@ -163,6 +189,34 @@ const bookingSlice = createSlice({
         state.error = null;
       })
       .addCase(fetchBookings.rejected, (state, action) => {
+        state.isLoading = false;
+        state.error = action.payload as string;
+      })
+      // Fetch puja bookings cases
+      .addCase(fetchPujaBookings.pending, (state) => {
+        state.isLoading = true;
+        state.error = null;
+      })
+      .addCase(fetchPujaBookings.fulfilled, (state, action: PayloadAction<Booking[]>) => {
+        state.isLoading = false;
+        state.bookings = action.payload;
+        state.error = null;
+      })
+      .addCase(fetchPujaBookings.rejected, (state, action) => {
+        state.isLoading = false;
+        state.error = action.payload as string;
+      })
+      // Fetch chadawa bookings cases
+      .addCase(fetchChadawaBookings.pending, (state) => {
+        state.isLoading = true;
+        state.error = null;
+      })
+      .addCase(fetchChadawaBookings.fulfilled, (state, action: PayloadAction<Booking[]>) => {
+        state.isLoading = false;
+        state.bookings = action.payload;
+        state.error = null;
+      })
+      .addCase(fetchChadawaBookings.rejected, (state, action) => {
         state.isLoading = false;
         state.error = action.payload as string;
       })

@@ -87,11 +87,15 @@ export interface AdminStats {
   totalPujas: number;
   totalEarnings: number;
   totalOrders: number;
+  totalPujaBookings: number;
+  totalChadawaBookings: number;
   monthlyGrowth: {
     users: number;
     pujas: number;
     earnings: number;
     orders: number;
+    pujaBookings: number;
+    chadawaBookings: number;
   };
 }
 
