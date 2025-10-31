@@ -6,6 +6,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { createPuja, uploadPujaImages } from '@/store/slices/pujaSlice';
 import { fetchPlans } from '@/store/slices/planSlice';
 import { fetchChadawas } from '@/store/slices/chadawaSlice';
+import { uploadTempleImage } from '@/store/slices/templeSlice';
 import { AppDispatch, RootState } from '@/store';
 import { Form, Input, Button, message, Select, DatePicker, TimePicker, Switch, Divider, Typography, Checkbox } from 'antd';
 import { useDropzone } from 'react-dropzone';
@@ -140,6 +141,7 @@ interface PujaFormData {
   about: string;
   pujaImages: File[];
   templeImage: File | null;
+  templeImageUrl: string; // Store the uploaded image URL
   templeAddress: string;
   templeDescription: string;
   benefits: Benefit[];
@@ -183,6 +185,7 @@ const CreatePujaForm: React.FC<CreatePujaFormProps> = ({ onSuccess }) => {
     about: '',
     pujaImages: [],
     templeImage: null,
+    templeImageUrl: '',
     templeAddress: '',
     templeDescription: '',
     benefits: [
@@ -298,14 +301,14 @@ const CreatePujaForm: React.FC<CreatePujaFormProps> = ({ onSuccess }) => {
     },
     multiple: false,
     maxSize: 10 * 1024 * 1024,
-    onDrop: (acceptedFiles, rejectedFiles) => {
+    onDrop: async (acceptedFiles, rejectedFiles) => {
       if (rejectedFiles.length > 0) {
         rejectedFiles.forEach(({ file, errors }) => {
           errors.forEach(error => {
             if (error.code === 'file-too-large') {
               message.error(`File ${file.name} is too large. Maximum size is 10MB.`);
             } else if (error.code === 'file-invalid-type') {
-              message.error(`File ${file.name} has invalid type. Only JPEG, PNG are allowed.`);
+              message.error(`File ${file.name} has invalid type. Only JPEG, PNG, WebP are allowed.`);
             }
           });
         });
@@ -314,6 +317,25 @@ const CreatePujaForm: React.FC<CreatePujaFormProps> = ({ onSuccess }) => {
       if (acceptedFiles.length > 0 && acceptedFiles[0]) {
         const file = acceptedFiles[0];
         handleInputChange('templeImage', file);
+        
+        // Upload temple image immediately
+        message.loading({ content: 'Uploading temple image...', key: 'templeImageUpload' });
+        try {
+          const uploadResult = await dispatch(uploadTempleImage(file)) as any;
+          
+          if (uploadTempleImage.fulfilled.match(uploadResult)) {
+            const { file_url } = uploadResult.payload;
+            handleInputChange('templeImageUrl', file_url);
+            message.success({ content: 'Temple image uploaded successfully!', key: 'templeImageUpload' });
+          } else {
+            message.error({ content: 'Failed to upload temple image', key: 'templeImageUpload' });
+            handleInputChange('templeImage', null);
+          }
+        } catch (error) {
+          console.error('Temple image upload error:', error);
+          message.error({ content: 'Error uploading temple image', key: 'templeImageUpload' });
+          handleInputChange('templeImage', null);
+        }
       }
     },
   });
@@ -413,7 +435,7 @@ const CreatePujaForm: React.FC<CreatePujaFormProps> = ({ onSuccess }) => {
         description: (formData.about ?? '').trim(),
         date: formData.date || null, // ✅ CHANGED: just date
         time: formData.time || null, // ✅ CHANGED: just time
-        temple_image_url: formData.templeImage?.name ?? '',
+        temple_image_url: formData.templeImageUrl || '', // Use uploaded image URL
         temple_address: (formData.templeAddress ?? '').trim(),
         temple_description: (formData.templeDescription ?? '').trim(),
         benefits: benefitsToAdd, 
@@ -663,14 +685,25 @@ const CreatePujaForm: React.FC<CreatePujaFormProps> = ({ onSuccess }) => {
                       <path fillRule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clipRule="evenodd" />
                     </svg>
                     <span className="text-sm text-gray-600 truncate flex-1">{formData.templeImage.name}</span>
+                    {formData.templeImageUrl && (
+                      <span className="text-xs text-green-600 font-medium">✓ Uploaded</span>
+                    )}
                     <button
                       type="button"
-                      onClick={() => handleInputChange('templeImage', null)}
+                      onClick={() => {
+                        handleInputChange('templeImage', null);
+                        handleInputChange('templeImageUrl', '');
+                      }}
                       className="text-red-500 hover:text-red-700 text-sm font-medium"
                     >
                       ✕
                     </button>
                   </div>
+                  {formData.templeImageUrl && (
+                    <div className="mt-2 text-xs text-gray-500 truncate">
+                      URL: {formData.templeImageUrl}
+                    </div>
+                  )}
                 </div>
               </div>
             )}
@@ -1056,6 +1089,7 @@ const CreatePujaForm: React.FC<CreatePujaFormProps> = ({ onSuccess }) => {
                 about: '',
                 pujaImages: [],
                 templeImage: null,
+                templeImageUrl: '',
                 templeAddress: '',
                 templeDescription: '',
                 benefits: [
