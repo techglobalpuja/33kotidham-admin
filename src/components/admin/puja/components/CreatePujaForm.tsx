@@ -678,7 +678,20 @@ const CreatePujaForm: React.FC<CreatePujaFormProps> = ({ onSuccess }) => {
             </div>
             
             {formData.templeImage && (
-              <div className="mt-4">
+              <div className="mt-4 space-y-3">
+                {/* Image Preview */}
+                <div className="relative w-full h-48 bg-gray-100 rounded-lg overflow-hidden border-2 border-indigo-200">
+                  <img
+                    src={createImagePreviewUrl(formData.templeImage)}
+                    alt="Temple preview"
+                    className="w-full h-full object-cover"
+                    onError={(e) => {
+                      e.currentTarget.style.display = 'none';
+                    }}
+                  />
+                </div>
+                
+                {/* File Info */}
                 <div className="bg-white p-3 rounded-lg border border-indigo-200">
                   <div className="flex items-center gap-2">
                     <svg className="w-4 h-4 text-indigo-500" fill="currentColor" viewBox="0 0 20 20">

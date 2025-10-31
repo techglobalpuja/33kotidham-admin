@@ -281,12 +281,28 @@ const ViewPujaModal: React.FC<ViewPujaModalProps> = ({
           </h3>
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Temple Image URL</label>
-              <div className="w-full px-4 py-3 bg-indigo-50 border border-indigo-200 rounded-lg text-black break-words">
-                {safeData.temple_image_url}
+            {/* Temple Image Preview */}
+            {safeData.temple_image_url && safeData.temple_image_url !== 'N/A' && (
+              <div className="md:col-span-2">
+                <label className="block text-sm font-medium text-gray-700 mb-2">Temple Image</label>
+                <div className="relative w-full h-64 bg-gray-100 rounded-lg overflow-hidden border-2 border-indigo-200">
+                  <img
+                    src={`https://api.33kotidham.in/${safeData.temple_image_url}`}
+                    alt="Temple"
+                    className="w-full h-full object-cover"
+                    onError={(e) => {
+                      e.currentTarget.style.display = 'none';
+                      if (e.currentTarget.parentElement) {
+                        e.currentTarget.parentElement.innerHTML = '<div class="w-full h-full flex items-center justify-center bg-indigo-100"><span class="text-indigo-400 text-4xl">🏦</span></div>';
+                      }
+                    }}
+                  />
+                </div>
+                <div className="mt-2 text-xs text-gray-500 break-words bg-indigo-50 p-2 rounded border border-indigo-200">
+                  URL: {safeData.temple_image_url}
+                </div>
               </div>
-            </div>
+            )}
             
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Temple Address</label>
@@ -295,7 +311,7 @@ const ViewPujaModal: React.FC<ViewPujaModalProps> = ({
               </div>
             </div>
             
-            <div className="md:col-span-2">
+            <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Temple Description</label>
               <div className="w-full px-4 py-3 bg-indigo-50 border border-indigo-200 rounded-lg text-black min-h-24">
                 {safeData.temple_description}

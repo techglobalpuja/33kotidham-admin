@@ -486,7 +486,8 @@ const UpdatePujaModal: React.FC<UpdatePujaModalProps> = ({
     accept: {
       'image/jpeg': [],
       'image/png': [],
-      'image/jpg': []
+      'image/jpg': [],
+      'image/webp': []
     },
     multiple: true,
     maxFiles: 6,
@@ -499,7 +500,7 @@ const UpdatePujaModal: React.FC<UpdatePujaModalProps> = ({
               if (error.code === 'file-too-large') {
                 message.error(`File ${file.name} is too large. Maximum size is 10MB.`);
               } else if (error.code === 'file-invalid-type') {
-                message.error(`File ${file.name} has invalid type. Only JPEG, PNG are allowed.`);
+                message.error(`File ${file.name} has invalid type. Only JPEG, PNG, WebP are allowed.`);
               } else if (error.code === 'too-many-files') {
                 message.error('Cannot upload more than 6 images.');
               }
@@ -990,17 +991,6 @@ const UpdatePujaModal: React.FC<UpdatePujaModalProps> = ({
                   <svg className="w-8 h-8 mb-2 text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
                   </svg>
-                  <p className="mb-1 text-sm font-medium text-orange-600">
-                    {(formData.pujaImages && Array.isArray(formData.pujaImages) && formData.pujaImages.length > 0) 
-                      ? `Selected ${formData.pujaImages.length} of 6 new images` 
-                      : 'Click or drag to upload new images (up to 6)'}
-                  </p>
-                  <p className="text-xs text-orange-500">PNG, JPG, JPEG up to 10MB each</p>
-                  {imagesChanged && (
-                    <p className="text-xs text-red-600 font-bold mt-1">⚠️ Previous images will be deleted and replaced</p>
-                  )}
-                </div>
-              </div>
               
               {/* New Images Preview */}
               {formData.pujaImages && Array.isArray(formData.pujaImages) && formData.pujaImages.length > 0 && (
@@ -1131,7 +1121,31 @@ const UpdatePujaModal: React.FC<UpdatePujaModalProps> = ({
                 </div>
                 
                 {formData.templeImage && formData.templeImage.toString().trim() && (
-                  <div className="mt-4">
+                  <div className="mt-4 space-y-3">
+                    {/* Image Preview */}
+                    <div className="relative w-full h-48 bg-gray-100 rounded-lg overflow-hidden border-2 border-indigo-200">
+                      {formData.templeImageFile ? (
+                        <img
+                          src={createImagePreviewUrl(formData.templeImageFile)}
+                          alt="Temple preview"
+                          className="w-full h-full object-cover"
+                          onError={(e) => {
+                            e.currentTarget.style.display = 'none';
+                          }}
+                        />
+                      ) : formData.templeImageUrl ? (
+                        <img
+                          src={`https://api.33kotidham.in/${formData.templeImageUrl}`}
+                          alt="Temple preview"
+                          className="w-full h-full object-cover"
+                          onError={(e) => {
+                            e.currentTarget.style.display = 'none';
+                          }}
+                        />
+                      ) : null}
+                    </div>
+                    
+                    {/* File Info */}
                     <div className="bg-white p-3 rounded-lg border border-indigo-200">
                       <div className="flex items-center gap-2">
                         <svg className="w-4 h-4 text-indigo-500" fill="currentColor" viewBox="0 0 20 20">
