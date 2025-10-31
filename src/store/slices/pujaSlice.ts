@@ -77,13 +77,11 @@ export const fetchPujas = createAsyncThunk(
   async (params: { is_active?: boolean } | undefined, { rejectWithValue }) => {
     try {
       const queryParams = new URLSearchParams();
-      if (params?.is_active !== undefined) {
-        queryParams.append('is_active', params.is_active.toString());
-      }
+      // Always include is_active parameter, defaulting to true if not provided
+      const isActiveValue = params?.is_active !== undefined ? params.is_active : true;
+      queryParams.append('is_active', isActiveValue.toString());
       
-      const url = queryParams.toString() 
-        ? `/api/v1/pujas?${queryParams.toString()}` 
-        : '/api/v1/pujas';
+      const url = `/api/v1/pujas?${queryParams.toString()}`;
         
       const response = await axiosInstance.get(url);
       return response?.data as Puja[];
