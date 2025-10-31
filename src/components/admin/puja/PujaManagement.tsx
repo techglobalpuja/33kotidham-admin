@@ -15,7 +15,7 @@ const PujaManagement: React.FC = () => {
 
   const handleCreateSuccess = () => {
     setActiveSubTab('all');
-    dispatch(fetchPujas());
+    dispatch(fetchPujas({ is_active: true }));
   };
 
   return (
