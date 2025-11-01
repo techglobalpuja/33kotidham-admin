@@ -10,6 +10,7 @@ import categoryReducer from './slices/categorySlice';
 import bookingReducer from './slices/bookingSlice';
 import templeReducer from './slices/templeSlice';
 import userReducer from './slices/userSlice';
+import dashboardReducer from './slices/dashboardSlice';
 
 const store = configureStore({
   reducer: {
@@ -23,6 +24,7 @@ const store = configureStore({
     booking: bookingReducer,
     temple: templeReducer,
     user: userReducer,
+    dashboard: dashboardReducer,
   },
 });
 

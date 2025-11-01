@@ -89,6 +89,8 @@ export interface AdminStats {
   totalOrders: number;
   totalPujaBookings: number;
   totalChadawaBookings: number;
+  totalBlogs: number;
+  totalChadawaItems: number;
   monthlyGrowth: {
     users: number;
     pujas: number;
