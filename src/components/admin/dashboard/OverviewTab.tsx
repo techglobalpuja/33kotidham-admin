@@ -103,24 +103,24 @@ const OverviewTab: React.FC<OverviewTabProps> = ({ stats, isLoading = false, err
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-6">
         {statCards.map((card, index) => (
-          <div key={index} className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+          <div key={index} className="bg-white rounded-xl shadow-sm p-4 sm:p-6 border border-gray-100">
             <div className="flex items-center justify-between">
               <div className="flex-1">
-                <p className="text-sm font-medium text-gray-600">{card.title}</p>
-                <p className="text-2xl font-bold text-gray-900 mt-2">{card.value}</p>
+                <p className="text-xs sm:text-sm font-medium text-gray-600">{card.title}</p>
+                <p className="text-xl sm:text-2xl font-bold text-gray-900 mt-1 sm:mt-2">{card.value}</p>
                 {card.change && card.changeLabel && (
-                  <p className="text-sm text-green-500 mt-1">
+                  <p className="text-xs sm:text-sm text-green-500 mt-1">
                     <span className="inline-flex items-center">
                       {card.change} {card.changeLabel}
                     </span>
                   </p>
                 )}
               </div>
-              <div className={`${card.color} w-12 h-12 rounded-lg flex items-center justify-center text-white text-xl flex-shrink-0`}>
+              <div className={`${card.color} w-10 h-10 sm:w-12 sm:h-12 rounded-lg flex items-center justify-center text-white text-lg sm:text-xl flex-shrink-0`}>
                 {card.icon}
               </div>
             </div>
@@ -129,11 +129,11 @@ const OverviewTab: React.FC<OverviewTabProps> = ({ stats, isLoading = false, err
       </div>
 
       {/* Charts Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
         {/* Statistics Overview Chart */}
-        <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Statistics Overview</h3>
-          <ResponsiveContainer width="100%" height={300}>
+        <div className="bg-white rounded-xl shadow-sm p-4 sm:p-6 border border-gray-100">
+          <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-3 sm:mb-4">Statistics Overview</h3>
+          <ResponsiveContainer width="100%" height={250}>
             <BarChart
               data={[
                 {
@@ -179,9 +179,9 @@ const OverviewTab: React.FC<OverviewTabProps> = ({ stats, isLoading = false, err
         </div>
 
         {/* Monthly Growth Chart */}
-        <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Monthly Growth (%)</h3>
-          <ResponsiveContainer width="100%" height={300}>
+        <div className="bg-white rounded-xl shadow-sm p-4 sm:p-6 border border-gray-100">
+          <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-3 sm:mb-4">Monthly Growth (%)</h3>
+          <ResponsiveContainer width="100%" height={250}>
             <LineChart
               data={[
                 {
@@ -219,66 +219,66 @@ const OverviewTab: React.FC<OverviewTabProps> = ({ stats, isLoading = false, err
       </div>
 
       {/* Quick Actions */}
-      <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h3>
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+      <div className="bg-white rounded-xl shadow-sm p-4 sm:p-6 border border-gray-100">
+        <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-3 sm:mb-4">Quick Actions</h3>
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
           <button
             onClick={() => onTabChange?.('pujas')}
-            className="p-4 bg-gradient-to-r from-orange-100 to-orange-200 rounded-lg hover:from-orange-200 hover:to-orange-300 transition-all duration-200 group"
+            className="p-3 sm:p-4 bg-gradient-to-r from-orange-100 to-orange-200 rounded-lg hover:from-orange-200 hover:to-orange-300 transition-all duration-200 group"
           >
             <div className="text-center">
-              <div className="text-3xl mb-2 group-hover:scale-110 transition-transform duration-200">
+              <div className="text-2xl sm:text-3xl mb-1 sm:mb-2 group-hover:scale-110 transition-transform duration-200">
                 🛕
               </div>
-              <p className="text-sm font-medium text-gray-900">Manage Pujas</p>
+              <p className="text-xs sm:text-sm font-medium text-gray-900">Manage Pujas</p>
             </div>
           </button>
           
           <button
             onClick={() => onTabChange?.('plans')}
-            className="p-4 bg-gradient-to-r from-indigo-100 to-indigo-200 rounded-lg hover:from-indigo-200 hover:to-indigo-300 transition-all duration-200 group"
+            className="p-3 sm:p-4 bg-gradient-to-r from-indigo-100 to-indigo-200 rounded-lg hover:from-indigo-200 hover:to-indigo-300 transition-all duration-200 group"
           >
             <div className="text-center">
-              <div className="text-3xl mb-2 group-hover:scale-110 transition-transform duration-200">
+              <div className="text-2xl sm:text-3xl mb-1 sm:mb-2 group-hover:scale-110 transition-transform duration-200">
                 📋
               </div>
-              <p className="text-sm font-medium text-gray-900">Manage Plans</p>
+              <p className="text-xs sm:text-sm font-medium text-gray-900">Manage Plans</p>
             </div>
           </button>
           
           <button
             onClick={() => onTabChange?.('chawada')}
-            className="p-4 bg-gradient-to-r from-purple-100 to-purple-200 rounded-lg hover:from-purple-200 hover:to-purple-300 transition-all duration-200 group"
+            className="p-3 sm:p-4 bg-gradient-to-r from-purple-100 to-purple-200 rounded-lg hover:from-purple-200 hover:to-purple-300 transition-all duration-200 group"
           >
             <div className="text-center">
-              <div className="text-3xl mb-2 group-hover:scale-110 transition-transform duration-200">
+              <div className="text-2xl sm:text-3xl mb-1 sm:mb-2 group-hover:scale-110 transition-transform duration-200">
                 🛍️
               </div>
-              <p className="text-sm font-medium text-gray-900">Chawada Store</p>
+              <p className="text-xs sm:text-sm font-medium text-gray-900">Chawada Store</p>
             </div>
           </button>
           
           <button
             onClick={() => onTabChange?.('puja-bookings')}
-            className="p-4 bg-gradient-to-r from-blue-100 to-blue-200 rounded-lg hover:from-blue-200 hover:to-blue-300 transition-all duration-200 group"
+            className="p-3 sm:p-4 bg-gradient-to-r from-blue-100 to-blue-200 rounded-lg hover:from-blue-200 hover:to-blue-300 transition-all duration-200 group"
           >
             <div className="text-center">
-              <div className="text-3xl mb-2 group-hover:scale-110 transition-transform duration-200">
+              <div className="text-2xl sm:text-3xl mb-1 sm:mb-2 group-hover:scale-110 transition-transform duration-200">
                 📦
               </div>
-              <p className="text-sm font-medium text-gray-900">Puja Bookings</p>
+              <p className="text-xs sm:text-sm font-medium text-gray-900">Puja Bookings</p>
             </div>
           </button>
           
           <button
             onClick={() => onTabChange?.('blogs')}
-            className="p-4 bg-gradient-to-r from-green-100 to-green-200 rounded-lg hover:from-green-200 hover:to-green-300 transition-all duration-200 group"
+            className="p-3 sm:p-4 bg-gradient-to-r from-green-100 to-green-200 rounded-lg hover:from-green-200 hover:to-green-300 transition-all duration-200 group"
           >
             <div className="text-center">
-              <div className="text-3xl mb-2 group-hover:scale-110 transition-transform duration-200">
+              <div className="text-2xl sm:text-3xl mb-1 sm:mb-2 group-hover:scale-110 transition-transform duration-200">
                 📝
               </div>
-              <p className="text-sm font-medium text-gray-900">Manage Blogs</p>
+              <p className="text-xs sm:text-sm font-medium text-gray-900">Manage Blogs</p>
             </div>
           </button>
         </div>
