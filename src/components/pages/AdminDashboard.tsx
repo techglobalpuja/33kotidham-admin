@@ -40,7 +40,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = () => {
   // Get initial tab from URL or default to 'overview'
   const getInitialTab = () => {
     const tabParam = searchParams.get('tab');
-    const validTabs = ['overview', 'pujas', 'puja-process', 'plans', 'chawada', 'products', 'users', 'puja-bookings', 'chadawa-bookings', 'content', 'blogs', 'temples', 'analytics'];
+    const validTabs = ['overview', 'pujas', 'puja-process', 'plans', 'store', 'chawada', 'products', 'users', 'puja-bookings', 'chadawa-bookings', 'content', 'blogs', 'temples', 'analytics'];
     return tabParam && validTabs.includes(tabParam) ? tabParam : 'overview';
   };
   
@@ -107,6 +107,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = () => {
         return <PujaProcessManagement />;
       case 'plans':
         return <PlanManagement />;
+      case 'store':
+        return <ProductManagement />;
       case 'chawada':
         return <ChawadaManagement />;
       case 'products':
