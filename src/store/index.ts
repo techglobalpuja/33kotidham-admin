@@ -13,6 +13,7 @@ import userReducer from './slices/userSlice';
 import dashboardReducer from './slices/dashboardSlice';
 import productReducer from './slices/productSlice';
 import productCategoryReducer from './slices/productCategorySlice';
+import orderReducer from './slices/orderSlice';
 
 const store = configureStore({
   reducer: {
@@ -29,6 +30,7 @@ const store = configureStore({
     dashboard: dashboardReducer,
     product: productReducer,
     productCategory: productCategoryReducer,
+    order: orderReducer,
   },
 });
 

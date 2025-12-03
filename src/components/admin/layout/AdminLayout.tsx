@@ -29,6 +29,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children, activeTab, onTabCha
     { id: 'chawada', label: 'Chawada Store', icon: '🛍️' },
     { id: 'puja-bookings', label: 'Puja Bookings', icon: '📦' },
     { id: 'chadawa-bookings', label: 'Chadawa Bookings', icon: '📦' },
+    { id: 'orders', label: 'Orders', icon: '📦' },
     { id: 'blogs', label: 'Blogs', icon: '📝' },
     // { id: 'content', label: 'Content', icon: '📁' },
     // { id: 'analytics', label: 'Analytics', icon: '📈' },
