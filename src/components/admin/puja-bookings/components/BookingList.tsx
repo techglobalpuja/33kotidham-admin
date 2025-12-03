@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { RootState } from '@/store';
 import { fetchPujaBookings, fetchBookingById } from '@/store/slices/bookingSlice';
+import { fetchAllPujas } from '@/store/slices/pujaSlice'; // Import fetchAllPujas
 import ViewBookingModal from '@/components/admin/puja-bookings/components/ViewBookingModal';
 import type { AppDispatch } from '@/store';
 import type { BookingState } from '@/types';
@@ -75,15 +76,22 @@ interface BookingListProps {
 const BookingList: React.FC<BookingListProps> = ({ viewMode = 'table', bookingType = 'all' }) => {
   const dispatch = useDispatch<AppDispatch>();
   const { bookings: rawBookings, isLoading } = useSelector((state: RootState) => state.booking as BookingState);
+  const { pujas: allPujas } = useSelector((state: RootState) => state.puja); // Get all pujas from Redux store
 
   // UI state
   const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [pujaFilter, setPujaFilter] = useState<string>('all'); // New puja filter state
   const [isLoadingView, setIsLoadingView] = useState<boolean>(false);
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
   const [viewBookingData, setViewBookingData] = useState<any>(null);
   const [isViewModalVisible, setIsViewModalVisible] = useState<boolean>(false);
   const [currentPage, setCurrentPage] = useState<number>(1);
   const itemsPerPage = 10;
+
+  // Fetch all pujas when component mounts
+  useEffect(() => {
+    dispatch(fetchAllPujas()); // Fetch all pujas (both active and inactive)
+  }, [dispatch]);
 
   // Transform raw bookings
   const bookings: Booking[] = useMemo(() => {
@@ -183,14 +191,22 @@ const BookingList: React.FC<BookingListProps> = ({ viewMode = 'table', bookingTy
     return bookings
       .filter((b) => {
         const bookingStatus = (b?.status ?? 'pending').toString().trim();
-        return statusFilter === 'all' || bookingStatus === statusFilter;
+        const bookingPujaId = b?.puja?.id ?? 0;
+        
+        // Apply status filter
+        const statusMatch = statusFilter === 'all' || bookingStatus === statusFilter;
+        
+        // Apply puja filter
+        const pujaMatch = pujaFilter === 'all' || bookingPujaId === parseInt(pujaFilter);
+        
+        return statusMatch && pujaMatch;
       })
       .sort((a, b) => {
         const dateA = new Date(a.created_at).getTime();
         const dateB = new Date(b.created_at).getTime();
         return dateB - dateA; // newest first
       });
-  }, [bookings, statusFilter]);
+  }, [bookings, statusFilter, pujaFilter]); // Add pujaFilter to dependencies
 
   // Pagination
   const totalPages = Math.max(1, Math.ceil(filteredBookings.length / itemsPerPage));
@@ -202,7 +218,7 @@ const BookingList: React.FC<BookingListProps> = ({ viewMode = 'table', bookingTy
   // Reset page on filter change
   useEffect(() => {
     setCurrentPage(1);
-  }, [statusFilter]);
+  }, [statusFilter, pujaFilter]); // Add pujaFilter to dependencies
 
   // Helpers
   const formatCurrency = (amount: string) => {
@@ -295,6 +311,20 @@ const BookingList: React.FC<BookingListProps> = ({ viewMode = 'table', bookingTy
           <option value="confirmed">Confirmed</option>
           <option value="pending">Pending</option>
           <option value="cancelled">Cancelled</option>
+        </select>
+        
+        {/* New Puja Name Filter */}
+        <select
+          value={pujaFilter}
+          onChange={(e) => setPujaFilter(e.target.value)}
+          className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent text-sm text-gray-800"
+        >
+          <option value="all">All Pujas</option>
+          {allPujas && allPujas.map((puja: any) => (
+            <option key={puja.id} value={puja.id}>
+              {puja.name}
+            </option>
+          ))}
         </select>
       </div>
 

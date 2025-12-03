@@ -91,6 +91,32 @@ export const fetchPujas = createAsyncThunk(
   }
 );
 
+// Async thunk for fetching all pujas (both active and inactive)
+export const fetchAllPujas = createAsyncThunk(
+  'puja/fetchAllPujas',
+  async (_, { rejectWithValue }) => {
+    try {
+      // Fetch active pujas
+      const activeResponse = await axiosInstance.get('/api/v1/pujas?is_active=true');
+      const activePujas = activeResponse?.data as Puja[];
+      
+      // Fetch inactive pujas
+      const inactiveResponse = await axiosInstance.get('/api/v1/pujas?is_active=false');
+      const inactivePujas = inactiveResponse?.data as Puja[];
+      
+      // Combine and deduplicate pujas
+      const allPujas = [...activePujas, ...inactivePujas];
+      const uniquePujas = allPujas.filter((puja, index, self) => 
+        index === self.findIndex(p => p.id === puja.id)
+      );
+      
+      return uniquePujas;
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || error.message);
+    }
+  }
+);
+
 // Async thunk for fetching a single puja by ID
 export const fetchPujaById = createAsyncThunk(
   'puja/fetchPujaById',
@@ -262,6 +288,20 @@ const pujaSlice = createSlice({
         state.error = null;
       })
       .addCase(fetchPujas.rejected, (state, action) => {
+        state.isLoading = false;
+        state.error = action.payload as string;
+      })
+      // Fetch all pujas cases
+      .addCase(fetchAllPujas.pending, (state) => {
+        state.isLoading = true;
+        state.error = null;
+      })
+      .addCase(fetchAllPujas.fulfilled, (state, action: PayloadAction<Puja[]>) => {
+        state.isLoading = false;
+        state.pujas = action.payload;
+        state.error = null;
+      })
+      .addCase(fetchAllPujas.rejected, (state, action) => {
         state.isLoading = false;
         state.error = action.payload as string;
       })
