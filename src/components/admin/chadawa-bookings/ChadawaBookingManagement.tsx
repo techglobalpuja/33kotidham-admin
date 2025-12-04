@@ -10,6 +10,7 @@ const ChadawaBookingManagement: React.FC = () => {
   const dispatch = useDispatch<AppDispatch>();
 
   React.useEffect(() => {
+    // Fetch temple chadawa bookings (temple_id not null)
     dispatch(fetchChadawaBookings());
   }, [dispatch]);
 

@@ -408,7 +408,7 @@ const PujaList: React.FC<PujaListProps> = ({ viewMode = 'grid' }) => {
     );
   }
 
-  if (!Array.isArray(pujas) || pujas.length === 0) {
+  if (false) {
     return (
       <div className="text-center py-12">
         <div className="text-gray-400 text-6xl mb-4">🛕</div>

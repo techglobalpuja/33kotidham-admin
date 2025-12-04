@@ -2,14 +2,29 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { RootState } from '@/store';
 import { fetchBookingById, fetchChadawaBookings } from '@/store/slices/bookingSlice';
+import { fetchTemples } from '@/store/slices/templeSlice'; // Import fetchTemples
 import ViewBookingModal from '@/components/admin/chadawa-bookings/components/ViewBookingModal';
 import type { AppDispatch } from '@/store';
 import type { BookingState } from '@/types';
 
+interface Temple {
+  id: number;
+  name: string;
+  description: string;
+  image_url: string;
+  location: string;
+  slug: string;
+  created_at: string;
+  updated_at: string;
+  recommended_pujas: any[];
+  chadawas: any[];
+}
+
 interface Booking {
   id: number;
-  puja_id: number;
-  plan_id: number;
+  puja_id: number | null;
+  temple_id: number | null;
+  plan_id: number | null;
   booking_date: string;
   mobile_number: string;
   whatsapp_number: string;
@@ -63,7 +78,8 @@ interface Booking {
     }>;
     plan_ids: number[];
     chadawas: any[];
-  };
+  } | null;
+  temple: Temple | null;
   plan: {
     id: number;
     name: string;
@@ -72,7 +88,7 @@ interface Booking {
     actual_price: string;
     discounted_price: string;
     created_at: string;
-  };
+  } | null;
   booking_chadawas: Array<{
     id: number;
     chadawa_id: number;
@@ -96,15 +112,22 @@ interface BookingListProps {
 const BookingList: React.FC<BookingListProps> = ({ viewMode = 'table', bookingType = 'all' }) => {
   const dispatch = useDispatch<AppDispatch>();
   const { bookings: rawBookings, isLoading } = useSelector((state: RootState) => state.booking as BookingState);
+  const { temples: allTemples } = useSelector((state: RootState) => state.temple); // Get all temples from Redux store
   
   // UI state
   const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [templeFilter, setTempleFilter] = useState<string>('all'); // New temple filter state
   const [isLoadingView, setIsLoadingView] = useState<boolean>(false);
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
   const [viewBookingData, setViewBookingData] = useState<any>(null);
   const [isViewModalVisible, setIsViewModalVisible] = useState<boolean>(false);
   const [currentPage, setCurrentPage] = useState<number>(1);
   const itemsPerPage = 10;
+
+  // Fetch all temples when component mounts
+  useEffect(() => {
+    dispatch(fetchTemples({ skip: 0, limit: 100 })); // Fetch all temples
+  }, [dispatch]);
 
   // Transform raw bookings
   const bookings: Booking[] = useMemo(() => {
@@ -119,8 +142,9 @@ const BookingList: React.FC<BookingListProps> = ({ viewMode = 'table', bookingTy
         try {
           return {
             id: b?.id ?? 0,
-            puja_id: b?.puja_id ?? 0,
-            plan_id: b?.plan_id ?? 0,
+            puja_id: b?.puja_id ?? null,
+            temple_id: b?.temple_id ?? null,
+            plan_id: b?.plan_id ?? null,
             booking_date: (b?.booking_date ?? '').toString().trim(),
             mobile_number: (b?.mobile_number ?? '').toString().trim(),
             whatsapp_number: (b?.whatsapp_number ?? '').toString().trim(),
@@ -140,7 +164,7 @@ const BookingList: React.FC<BookingListProps> = ({ viewMode = 'table', bookingTy
               created_at: (b?.user?.created_at ?? '').toString().trim(),
               updated_at: (b?.user?.updated_at ?? '').toString().trim(),
             },
-            puja: {
+            puja: b?.puja ? {
               id: b?.puja?.id ?? 0,
               name: (b?.puja?.name ?? '').toString().trim(),
               sub_heading: (b?.puja?.sub_heading ?? '').toString().trim(),
@@ -165,8 +189,20 @@ const BookingList: React.FC<BookingListProps> = ({ viewMode = 'table', bookingTy
               images: Array.isArray(b?.puja?.images) ? b.puja.images : [],
               plan_ids: Array.isArray(b?.puja?.plan_ids) ? b.puja.plan_ids : [],
               chadawas: Array.isArray(b?.puja?.chadawas) ? b.puja.chadawas : [],
-            },
-            plan: {
+            } : null,
+            temple: b?.temple ? {
+              id: b?.temple?.id ?? 0,
+              name: (b?.temple?.name ?? '').toString().trim(),
+              description: (b?.temple?.description ?? '').toString().trim(),
+              image_url: (b?.temple?.image_url ?? '').toString().trim(),
+              location: (b?.temple?.location ?? '').toString().trim(),
+              slug: (b?.temple?.slug ?? '').toString().trim(),
+              created_at: (b?.temple?.created_at ?? '').toString().trim(),
+              updated_at: (b?.temple?.updated_at ?? '').toString().trim(),
+              recommended_pujas: Array.isArray(b?.temple?.recommended_pujas) ? b.temple.recommended_pujas : [],
+              chadawas: Array.isArray(b?.temple?.chadawas) ? b.temple.chadawas : [],
+            } : null,
+            plan: b?.plan ? {
               id: b?.plan?.id ?? 0,
               name: (b?.plan?.name ?? '').toString().trim(),
               description: (b?.plan?.description ?? '').toString().trim(),
@@ -174,15 +210,16 @@ const BookingList: React.FC<BookingListProps> = ({ viewMode = 'table', bookingTy
               actual_price: (b?.plan?.actual_price ?? '0').toString().trim(),
               discounted_price: (b?.plan?.discounted_price ?? '0').toString().trim(),
               created_at: (b?.plan?.created_at ?? '').toString().trim(),
-            },
+            } : null,
             booking_chadawas: Array.isArray(b?.booking_chadawas) ? b.booking_chadawas : [],
           } as Booking;
         } catch (error) {
           console.error('Error transforming booking data:', error, b);
           return {
             id: 0,
-            puja_id: 0,
-            plan_id: 0,
+            puja_id: null,
+            temple_id: null,
+            plan_id: null,
             booking_date: '',
             mobile_number: '',
             whatsapp_number: '',
@@ -192,8 +229,9 @@ const BookingList: React.FC<BookingListProps> = ({ viewMode = 'table', bookingTy
             puja_link: null,
             created_at: '',
             user: { id: 0, name: '', email: '', mobile: '', role: '', is_active: false, email_verified: false, created_at: '', updated_at: '' },
-            puja: { id: 0, name: '', sub_heading: '', description: '', date: '', time: '', temple_image_url: '', temple_address: '', temple_description: '', prasad_price: 0, is_prasad_active: false, dakshina_prices_inr: '', dakshina_prices_usd: '', is_dakshina_active: false, manokamna_prices_inr: '', manokamna_prices_usd: '', is_manokamna_active: false, category: '', created_at: '', updated_at: '', benefits: [], images: [], plan_ids: [], chadawas: [] },
-            plan: { id: 0, name: '', description: '', image_url: '', actual_price: '0', discounted_price: '0', created_at: '' },
+            puja: null,
+            temple: null,
+            plan: null,
             booking_chadawas: [],
           } as Booking;
         }
@@ -205,14 +243,24 @@ const BookingList: React.FC<BookingListProps> = ({ viewMode = 'table', bookingTy
     return bookings
       .filter((b) => {
         const bookingStatus = (b?.status ?? 'pending').toString().trim();
-        return statusFilter === 'all' || bookingStatus === statusFilter;
+        const bookingTempleId = b?.temple?.id ?? null;
+        
+        // Apply status filter
+        const statusMatch = statusFilter === 'all' || bookingStatus === statusFilter;
+        
+        // Apply temple filter
+        const templeMatch = templeFilter === 'all' || 
+                          (templeFilter === 'null' && bookingTempleId === null) || 
+                          (bookingTempleId !== null && bookingTempleId === parseInt(templeFilter));
+        
+        return statusMatch && templeMatch;
       })
       .sort((a, b) => {
         const dateA = new Date(a.created_at).getTime();
         const dateB = new Date(b.created_at).getTime();
         return dateB - dateA; // newest first
       });
-  }, [bookings, statusFilter]);
+  }, [bookings, statusFilter, templeFilter]); // Add templeFilter to dependencies
 
   // Pagination
   const totalPages = Math.max(1, Math.ceil(filteredBookings.length / itemsPerPage));
@@ -224,7 +272,7 @@ const BookingList: React.FC<BookingListProps> = ({ viewMode = 'table', bookingTy
   // Reset page on filter change
   useEffect(() => {
     setCurrentPage(1);
-  }, [statusFilter]);
+  }, [statusFilter, templeFilter]); // Add templeFilter to dependencies
 
   // Helpers
   const formatCurrency = (amount: string) => {
@@ -307,17 +355,38 @@ const BookingList: React.FC<BookingListProps> = ({ viewMode = 'table', bookingTy
   return (
     <>
       {/* Filters */}
-      <div className="flex flex-wrap gap-4 mb-6 p-4 bg-gray-50 rounded-lg">
-        <select
-          value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value)}
-          className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent text-sm text-gray-800"
-        >
-          <option value="all">All Status</option>
-          <option value="confirmed">Confirmed</option>
-          <option value="pending">Pending</option>
-          <option value="cancelled">Cancelled</option>
-        </select>
+      <div className="flex flex-wrap items-center justify-between gap-4 mb-6 p-4 bg-gray-50 rounded-lg">
+        <div className="flex flex-wrap gap-4">
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent text-sm text-gray-800"
+          >
+            <option value="all">All Status</option>
+            <option value="confirmed">Confirmed</option>
+            <option value="pending">Pending</option>
+            <option value="cancelled">Cancelled</option>
+          </select>
+          
+          {/* Temple Filter */}
+          <select
+            value={templeFilter}
+            onChange={(e) => setTempleFilter(e.target.value)}
+            className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent text-sm text-gray-800"
+          >
+            <option value="all">All Temples</option>
+            {allTemples && allTemples.map((temple: any) => (
+              <option key={temple.id} value={temple.id}>
+                {temple.name}
+              </option>
+            ))}
+          </select>
+        </div>
+        
+        {/* Total Count Display */}
+        <div className="text-sm font-medium text-gray-600 bg-white px-4 py-2 rounded-lg border border-gray-200 shadow-sm">
+          Total Records: <span className="text-orange-600 font-bold">{filteredBookings.length}</span>
+        </div>
       </div>
 
       {/* Booking List */}
@@ -328,7 +397,7 @@ const BookingList: React.FC<BookingListProps> = ({ viewMode = 'table', bookingTy
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Booking ID</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Customer</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Puja</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Temple</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date & Time</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
@@ -350,15 +419,21 @@ const BookingList: React.FC<BookingListProps> = ({ viewMode = 'table', bookingTy
                     <div className="text-xs text-gray-500">{booking.mobile_number}</div>
                   </td>
                   <td className="px-6 py-4">
-                    <div className="text-sm text-gray-900">{booking.puja.name}</div>
-                    <div className="text-xs text-gray-500">Plan: {booking.plan.name}</div>
+                    <div className="text-sm text-gray-900">{booking.temple?.name || booking.puja?.name || 'N/A'}</div>
+                    <div className="text-xs text-gray-500">
+                      {booking.plan ? `Plan: ${booking.plan.name}` : 'No Plan'}
+                    </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-900">{booking.puja.date}</div>
-                    <div className="text-xs text-gray-500">{booking.puja.time}</div>
+                    <div className="text-sm text-gray-900">{formatDate(booking.booking_date)}</div>
+                    <div className="text-xs text-gray-500">
+                      {booking.puja?.time || 'N/A'}
+                    </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm font-medium text-gray-900">{formatCurrency(booking.plan.actual_price)}</div>
+                    <div className="text-sm font-medium text-gray-900">
+                      {booking.plan ? formatCurrency(booking.plan.actual_price) : 'N/A'}
+                    </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusBadgeClass(booking.status)}`}>
