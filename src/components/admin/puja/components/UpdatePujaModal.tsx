@@ -36,7 +36,7 @@ interface SortableImageItemProps {
   file: File;
   index: number;
   onRemove: () => void;
-  createImagePreviewUrl: (file: File) => string;
+  createImagePreviewUrl: (file: File | null) => string;
   revokeImagePreviewUrl: (url: string) => void;
 }
 
@@ -764,8 +764,18 @@ const UpdatePujaModal: React.FC<UpdatePujaModalProps> = ({
     }
   };
 
-  const createImagePreviewUrl = (file: File): string => {
-    return URL.createObjectURL(file);
+  const createImagePreviewUrl = (file: File | null): string => {
+    // Validate that file is a valid File or Blob object
+    if (!file) {
+      console.error('Invalid file object provided to createImagePreviewUrl:', file);
+      return '';
+    }
+    try {
+      return URL.createObjectURL(file);
+    } catch (error) {
+      console.error('Error creating object URL:', error);
+      return '';
+    }
   };
 
   const revokeImagePreviewUrl = (url: string): void => {
