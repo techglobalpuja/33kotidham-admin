@@ -301,31 +301,39 @@ const BookingList: React.FC<BookingListProps> = ({ viewMode = 'table', bookingTy
   return (
     <>
       {/* Filters */}
-      <div className="flex flex-wrap gap-4 mb-6 p-4 bg-gray-50 rounded-lg">
-        <select
-          value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value)}
-          className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent text-sm text-gray-800"
-        >
-          <option value="all">All Status</option>
-          <option value="confirmed">Confirmed</option>
-          <option value="pending">Pending</option>
-          <option value="cancelled">Cancelled</option>
-        </select>
+      <div className="flex flex-wrap items-center justify-between gap-4 mb-6 p-4 bg-gray-50 rounded-lg">
+        <div className="flex flex-wrap gap-4">
+          {/* Puja Name Filter */}
+          <select
+            value={pujaFilter}
+            onChange={(e) => setPujaFilter(e.target.value)}
+            className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent text-sm text-gray-800"
+          >
+            <option value="all">All Pujas</option>
+            {allPujas && allPujas.map((puja: any) => (
+              <option key={puja.id} value={puja.id}>
+                {puja.name}
+              </option>
+            ))}
+          </select>
+
+          {/* Status Filter */}
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent text-sm text-gray-800"
+          >
+            <option value="all">All Status</option>
+            <option value="confirmed">Confirmed</option>
+            <option value="pending">Pending</option>
+            <option value="cancelled">Cancelled</option>
+          </select>
+        </div>
         
-        {/* New Puja Name Filter */}
-        <select
-          value={pujaFilter}
-          onChange={(e) => setPujaFilter(e.target.value)}
-          className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent text-sm text-gray-800"
-        >
-          <option value="all">All Pujas</option>
-          {allPujas && allPujas.map((puja: any) => (
-            <option key={puja.id} value={puja.id}>
-              {puja.name}
-            </option>
-          ))}
-        </select>
+        {/* Total Count Display */}
+        <div className="text-sm font-medium text-gray-600 bg-white px-4 py-2 rounded-lg border border-gray-200 shadow-sm">
+          Total Records: <span className="text-orange-600 font-bold">{filteredBookings.length}</span>
+        </div>
       </div>
 
       {/* Booking List */}
