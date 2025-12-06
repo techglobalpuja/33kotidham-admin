@@ -81,6 +81,8 @@ const BookingList: React.FC<BookingListProps> = ({ viewMode = 'table', bookingTy
   // UI state
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [pujaFilter, setPujaFilter] = useState<string>('all'); // New puja filter state
+  const [startDate, setStartDate] = useState<string>(''); // Date filter: start date
+  const [endDate, setEndDate] = useState<string>(''); // Date filter: end date
   const [isLoadingView, setIsLoadingView] = useState<boolean>(false);
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
   const [viewBookingData, setViewBookingData] = useState<any>(null);
@@ -192,6 +194,7 @@ const BookingList: React.FC<BookingListProps> = ({ viewMode = 'table', bookingTy
       .filter((b) => {
         const bookingStatus = (b?.status ?? 'pending').toString().trim();
         const bookingPujaId = b?.puja?.id ?? 0;
+        const pujaDate = b?.puja?.date ?? '';
         
         // Apply status filter
         const statusMatch = statusFilter === 'all' || bookingStatus === statusFilter;
@@ -199,14 +202,23 @@ const BookingList: React.FC<BookingListProps> = ({ viewMode = 'table', bookingTy
         // Apply puja filter
         const pujaMatch = pujaFilter === 'all' || bookingPujaId === parseInt(pujaFilter);
         
-        return statusMatch && pujaMatch;
+        // Apply date filter
+        let dateMatch = true;
+        if (startDate && pujaDate) {
+          dateMatch = dateMatch && pujaDate >= startDate;
+        }
+        if (endDate && pujaDate) {
+          dateMatch = dateMatch && pujaDate <= endDate;
+        }
+        
+        return statusMatch && pujaMatch && dateMatch;
       })
       .sort((a, b) => {
         const dateA = new Date(a.created_at).getTime();
         const dateB = new Date(b.created_at).getTime();
         return dateB - dateA; // newest first
       });
-  }, [bookings, statusFilter, pujaFilter]); // Add pujaFilter to dependencies
+  }, [bookings, statusFilter, pujaFilter, startDate, endDate]); // Add date filters to dependencies
 
   // Pagination
   const totalPages = Math.max(1, Math.ceil(filteredBookings.length / itemsPerPage));
@@ -218,7 +230,7 @@ const BookingList: React.FC<BookingListProps> = ({ viewMode = 'table', bookingTy
   // Reset page on filter change
   useEffect(() => {
     setCurrentPage(1);
-  }, [statusFilter, pujaFilter]); // Add pujaFilter to dependencies
+  }, [statusFilter, pujaFilter, startDate, endDate]); // Add all filters to dependencies
 
   // Helpers
   const formatCurrency = (amount: string) => {
@@ -316,6 +328,32 @@ const BookingList: React.FC<BookingListProps> = ({ viewMode = 'table', bookingTy
               </option>
             ))}
           </select>
+
+          {/* Start Date Filter */}
+          <div className="flex items-center gap-2">
+            <label htmlFor="start-date" className="text-sm text-gray-700 font-medium">From:</label>
+            <input
+              id="start-date"
+              type="date"
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+              className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent text-sm text-gray-800"
+              placeholder="Start Date"
+            />
+          </div>
+
+          {/* End Date Filter */}
+          <div className="flex items-center gap-2">
+            <label htmlFor="end-date" className="text-sm text-gray-700 font-medium">To:</label>
+            <input
+              id="end-date"
+              type="date"
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
+              className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent text-sm text-gray-800"
+              placeholder="End Date"
+            />
+          </div>
 
           {/* Status Filter */}
           <select
