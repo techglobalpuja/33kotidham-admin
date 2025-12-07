@@ -79,7 +79,8 @@ const BookingList: React.FC<BookingListProps> = ({ viewMode = 'table', bookingTy
   const { pujas: allPujas } = useSelector((state: RootState) => state.puja); // Get all pujas from Redux store
 
   // UI state
-  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [statusFilter, setStatusFilter] = useState<string>('all'); // Payment status filter
+  const [pujaStatusFilter, setPujaStatusFilter] = useState<string>('all'); // Puja status filter
   const [pujaFilter, setPujaFilter] = useState<string>('all'); // New puja filter state
   const [startDate, setStartDate] = useState<string>(''); // Date filter: start date
   const [endDate, setEndDate] = useState<string>(''); // Date filter: end date
@@ -188,51 +189,7 @@ const BookingList: React.FC<BookingListProps> = ({ viewMode = 'table', bookingTy
       });
   }, [rawBookings]);
 
-  // Filter and sort
-  const filteredBookings = useMemo(() => {
-    return bookings
-      .filter((b) => {
-        const bookingStatus = (b?.status ?? 'pending').toString().trim();
-        const bookingPujaId = b?.puja?.id ?? 0;
-        const pujaDate = b?.puja?.date ?? '';
-        
-        // Apply status filter
-        const statusMatch = statusFilter === 'all' || bookingStatus === statusFilter;
-        
-        // Apply puja filter
-        const pujaMatch = pujaFilter === 'all' || bookingPujaId === parseInt(pujaFilter);
-        
-        // Apply date filter
-        let dateMatch = true;
-        if (startDate && pujaDate) {
-          dateMatch = dateMatch && pujaDate >= startDate;
-        }
-        if (endDate && pujaDate) {
-          dateMatch = dateMatch && pujaDate <= endDate;
-        }
-        
-        return statusMatch && pujaMatch && dateMatch;
-      })
-      .sort((a, b) => {
-        const dateA = new Date(a.created_at).getTime();
-        const dateB = new Date(b.created_at).getTime();
-        return dateB - dateA; // newest first
-      });
-  }, [bookings, statusFilter, pujaFilter, startDate, endDate]); // Add date filters to dependencies
-
-  // Pagination
-  const totalPages = Math.max(1, Math.ceil(filteredBookings.length / itemsPerPage));
-  const paginatedBookings = useMemo(() => {
-    const start = (currentPage - 1) * itemsPerPage;
-    return filteredBookings.slice(start, start + itemsPerPage);
-  }, [filteredBookings, currentPage]);
-
-  // Reset page on filter change
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [statusFilter, pujaFilter, startDate, endDate]); // Add all filters to dependencies
-
-  // Helpers
+  // Helpers - defined before useMemo to avoid hoisting issues
   const formatCurrency = (amount: string) => {
     try {
       const num = parseFloat(amount);
@@ -264,6 +221,90 @@ const BookingList: React.FC<BookingListProps> = ({ viewMode = 'table', bookingTy
         return 'bg-gray-100 text-gray-800';
     }
   };
+
+  // Helper function to determine puja status based on date
+  const getPujaStatus = (pujaDate: string): 'pending' | 'completed' => {
+    try {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const pujaDt = new Date(pujaDate);
+      pujaDt.setHours(0, 0, 0, 0);
+      return pujaDt >= today ? 'pending' : 'completed';
+    } catch {
+      return 'pending';
+    }
+  };
+
+  const getPujaStatusBadgeClass = (pujaStatus: string) => {
+    switch (pujaStatus.toLowerCase()) {
+      case 'completed':
+        return 'bg-blue-100 text-blue-800';
+      case 'pending':
+        return 'bg-purple-100 text-purple-800';
+      default:
+        return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  // Helper function to calculate total chadawas amount
+  const calculateChadawasTotal = (booking_chadawas: Array<{ id: number; chadawa_id: number; note: string | null; chadawa: { id: number; name: string; description: string; image_url: string; price: string; requires_note: boolean } }>): number => {
+    try {
+      return booking_chadawas.reduce((total, item) => {
+        const price = parseFloat(item.chadawa.price || '0');
+        return total + (isNaN(price) ? 0 : price);
+      }, 0);
+    } catch {
+      return 0;
+    }
+  };
+
+  // Filter and sort
+  const filteredBookings = useMemo(() => {
+    return bookings
+      .filter((b) => {
+        const bookingStatus = (b?.status ?? 'pending').toString().trim();
+        const bookingPujaId = b?.puja?.id ?? 0;
+        const pujaDate = b?.puja?.date ?? '';
+        const pujaStatus = getPujaStatus(pujaDate);
+        
+        // Apply payment status filter
+        const statusMatch = statusFilter === 'all' || bookingStatus === statusFilter;
+        
+        // Apply puja status filter
+        const pujaStatusMatch = pujaStatusFilter === 'all' || pujaStatus === pujaStatusFilter;
+        
+        // Apply puja filter
+        const pujaMatch = pujaFilter === 'all' || bookingPujaId === parseInt(pujaFilter);
+        
+        // Apply date filter
+        let dateMatch = true;
+        if (startDate && pujaDate) {
+          dateMatch = dateMatch && pujaDate >= startDate;
+        }
+        if (endDate && pujaDate) {
+          dateMatch = dateMatch && pujaDate <= endDate;
+        }
+        
+        return statusMatch && pujaStatusMatch && pujaMatch && dateMatch;
+      })
+      .sort((a, b) => {
+        const dateA = new Date(a.created_at).getTime();
+        const dateB = new Date(b.created_at).getTime();
+        return dateB - dateA; // newest first
+      });
+  }, [bookings, statusFilter, pujaStatusFilter, pujaFilter, startDate, endDate]); // Add all filters to dependencies
+
+  // Pagination
+  const totalPages = Math.max(1, Math.ceil(filteredBookings.length / itemsPerPage));
+  const paginatedBookings = useMemo(() => {
+    const start = (currentPage - 1) * itemsPerPage;
+    return filteredBookings.slice(start, start + itemsPerPage);
+  }, [filteredBookings, currentPage]);
+
+  // Reset page on filter change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [statusFilter, pujaStatusFilter, pujaFilter, startDate, endDate]); // Add all filters to dependencies
 
   const onViewModalOpen = async (bookingId: number, bookingData: Booking) => {
     console.log('onViewModalOpen', bookingId);
@@ -355,13 +396,24 @@ const BookingList: React.FC<BookingListProps> = ({ viewMode = 'table', bookingTy
             />
           </div>
 
-          {/* Status Filter */}
+          {/* Puja Status Filter */}
+          <select
+            value={pujaStatusFilter}
+            onChange={(e) => setPujaStatusFilter(e.target.value)}
+            className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent text-sm text-gray-800"
+          >
+            <option value="all">All Puja Status</option>
+            <option value="pending">Pending</option>
+            <option value="completed">Completed</option>
+          </select>
+
+          {/* Payment Status Filter */}
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
             className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent text-sm text-gray-800"
           >
-            <option value="all">All Status</option>
+            <option value="all">All Payment Status</option>
             <option value="confirmed">Confirmed</option>
             <option value="pending">Pending</option>
             <option value="cancelled">Cancelled</option>
@@ -385,7 +437,8 @@ const BookingList: React.FC<BookingListProps> = ({ viewMode = 'table', bookingTy
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Puja</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date & Time</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Puja Status</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Payment Status</th>
                 <th className="relative px-6 py-3"><span className="sr-only">Actions</span></th>
               </tr>
             </thead>
@@ -411,8 +464,38 @@ const BookingList: React.FC<BookingListProps> = ({ viewMode = 'table', bookingTy
                     <div className="text-sm text-gray-900">{booking.puja.date}</div>
                     <div className="text-xs text-gray-500">{booking.puja.time}</div>
                   </td>
+                  <td className="px-6 py-4">
+                    <div className="text-sm font-medium text-gray-900">
+                      {(() => {
+                        const planPrice = parseFloat(booking.plan.discounted_price || '0');
+                        const chadawasTotal = calculateChadawasTotal(booking.booking_chadawas);
+                        const grandTotal = planPrice + chadawasTotal;
+                        
+                        return (
+                          <div className="space-y-1">
+                            <div className="flex justify-between items-center">
+                              <span className="text-xs text-gray-500">Plan:</span>
+                              <span className="text-sm">{formatCurrency(booking.plan.discounted_price)}</span>
+                            </div>
+                            {chadawasTotal > 0 && (
+                              <div className="flex justify-between items-center">
+                                <span className="text-xs text-gray-500">Chadawas:</span>
+                                <span className="text-sm">{formatCurrency(chadawasTotal.toString())}</span>
+                              </div>
+                            )}
+                            <div className="flex justify-between items-center pt-1 border-t border-gray-200">
+                              <span className="text-xs font-semibold text-gray-700">Total:</span>
+                              <span className="font-bold">{formatCurrency(grandTotal.toString())}</span>
+                            </div>
+                          </div>
+                        );
+                      })()}
+                    </div>
+                  </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm font-medium text-gray-900">{formatCurrency(booking.plan.actual_price)}</div>
+                    <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getPujaStatusBadgeClass(getPujaStatus(booking.puja.date))}`}>
+                      {getPujaStatus(booking.puja.date).charAt(0).toUpperCase() + getPujaStatus(booking.puja.date).slice(1)}
+                    </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusBadgeClass(booking.status)}`}>
