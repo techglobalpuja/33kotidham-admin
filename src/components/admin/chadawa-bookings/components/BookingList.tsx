@@ -31,6 +31,7 @@ interface Booking {
   gotra: string;
   user_id: number;
   status: string;
+  chadawa_status: string; // New field for chadawa offering status
   puja_link: string | null;
   created_at: string;
   user: {
@@ -115,13 +116,15 @@ const BookingList: React.FC<BookingListProps> = ({ viewMode = 'table', bookingTy
   const { temples: allTemples } = useSelector((state: RootState) => state.temple); // Get all temples from Redux store
   
   // UI state
-  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [statusFilter, setStatusFilter] = useState<string>('all'); // Payment status filter
+  const [chadawaStatusFilter, setChadawaStatusFilter] = useState<string>('all'); // Chadawa status filter
   const [templeFilter, setTempleFilter] = useState<string>('all'); // New temple filter state
   const [isLoadingView, setIsLoadingView] = useState<boolean>(false);
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
   const [viewBookingData, setViewBookingData] = useState<any>(null);
   const [isViewModalVisible, setIsViewModalVisible] = useState<boolean>(false);
   const [currentPage, setCurrentPage] = useState<number>(1);
+  const [localBookings, setLocalBookings] = useState<Booking[]>([]); // Local state for bookings
   const itemsPerPage = 10;
 
   // Fetch all temples when component mounts
@@ -151,6 +154,7 @@ const BookingList: React.FC<BookingListProps> = ({ viewMode = 'table', bookingTy
             gotra: (b?.gotra ?? '').toString().trim(),
             user_id: b?.user_id ?? 0,
             status: (b?.status ?? 'pending').toString().trim(),
+            chadawa_status: (b?.chadawa_status ?? 'pending').toString().trim(), // Default to pending
             puja_link: b?.puja_link ?? null,
             created_at: (b?.created_at ?? '').toString().trim(),
             user: {
@@ -226,6 +230,7 @@ const BookingList: React.FC<BookingListProps> = ({ viewMode = 'table', bookingTy
             gotra: '',
             user_id: 0,
             status: 'pending',
+            chadawa_status: 'pending',
             puja_link: null,
             created_at: '',
             user: { id: 0, name: '', email: '', mobile: '', role: '', is_active: false, email_verified: false, created_at: '', updated_at: '' },
@@ -238,29 +243,38 @@ const BookingList: React.FC<BookingListProps> = ({ viewMode = 'table', bookingTy
       });
   }, [rawBookings]);
 
+  // Update local bookings when bookings change
+  useEffect(() => {
+    setLocalBookings(bookings);
+  }, [bookings]);
+
   // Filter and sort
   const filteredBookings = useMemo(() => {
-    return bookings
+    return localBookings
       .filter((b) => {
         const bookingStatus = (b?.status ?? 'pending').toString().trim();
+        const chadawaStatus = (b?.chadawa_status ?? 'pending').toString().trim();
         const bookingTempleId = b?.temple?.id ?? null;
         
-        // Apply status filter
+        // Apply payment status filter
         const statusMatch = statusFilter === 'all' || bookingStatus === statusFilter;
+        
+        // Apply chadawa status filter
+        const chadawaStatusMatch = chadawaStatusFilter === 'all' || chadawaStatus === chadawaStatusFilter;
         
         // Apply temple filter
         const templeMatch = templeFilter === 'all' || 
                           (templeFilter === 'null' && bookingTempleId === null) || 
                           (bookingTempleId !== null && bookingTempleId === parseInt(templeFilter));
         
-        return statusMatch && templeMatch;
+        return statusMatch && chadawaStatusMatch && templeMatch;
       })
       .sort((a, b) => {
         const dateA = new Date(a.created_at).getTime();
         const dateB = new Date(b.created_at).getTime();
         return dateB - dateA; // newest first
       });
-  }, [bookings, statusFilter, templeFilter]); // Add templeFilter to dependencies
+  }, [localBookings, statusFilter, chadawaStatusFilter, templeFilter]); // Use localBookings instead of bookings
 
   // Pagination
   const totalPages = Math.max(1, Math.ceil(filteredBookings.length / itemsPerPage));
@@ -272,7 +286,7 @@ const BookingList: React.FC<BookingListProps> = ({ viewMode = 'table', bookingTy
   // Reset page on filter change
   useEffect(() => {
     setCurrentPage(1);
-  }, [statusFilter, templeFilter]); // Add templeFilter to dependencies
+  }, [statusFilter, chadawaStatusFilter, templeFilter]); // Add chadawaStatusFilter to dependencies
 
   // Helpers
   const formatCurrency = (amount: string) => {
@@ -305,6 +319,42 @@ const BookingList: React.FC<BookingListProps> = ({ viewMode = 'table', bookingTy
       default:
         return 'bg-gray-100 text-gray-800';
     }
+  };
+
+  // Helper function to calculate total chadawas amount
+  const calculateChadawasTotal = (booking_chadawas: Array<{ id: number; chadawa_id: number; note: string | null; chadawa: { id: number; name: string; description: string; image_url: string; price: string; requires_note: boolean } }>): number => {
+    try {
+      return booking_chadawas.reduce((total, item) => {
+        const price = parseFloat(item.chadawa.price || '0');
+        return total + (isNaN(price) ? 0 : price);
+      }, 0);
+    } catch {
+      return 0;
+    }
+  };
+
+  const getChadawaStatusBadgeClass = (status: string) => {
+    switch (status.toLowerCase()) {
+      case 'completed':
+        return 'bg-blue-100 text-blue-800 border-blue-300';
+      case 'pending':
+        return 'bg-purple-100 text-purple-800 border-purple-300';
+      default:
+        return 'bg-gray-100 text-gray-800 border-gray-300';
+    }
+  };
+
+  // Handler to toggle chadawa status
+  const handleToggleChadawaStatus = (bookingId: number) => {
+    setLocalBookings(prevBookings =>
+      prevBookings.map(booking =>
+        booking.id === bookingId
+          ? { ...booking, chadawa_status: booking.chadawa_status === 'pending' ? 'completed' : 'pending' }
+          : booking
+      )
+    );
+    // TODO: Make API call to persist the change
+    // await dispatch(updateChadawaStatus({ bookingId, status: newStatus }));
   };
 
   const onViewModalOpen = async (bookingId: number, bookingData: Booking) => {
@@ -381,6 +431,29 @@ const BookingList: React.FC<BookingListProps> = ({ viewMode = 'table', bookingTy
               </option>
             ))}
           </select>
+          
+          {/* Chadawa Status Filter */}
+          <select
+            value={chadawaStatusFilter}
+            onChange={(e) => setChadawaStatusFilter(e.target.value)}
+            className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent text-sm text-gray-800"
+          >
+            <option value="all">All Chadawa Status</option>
+            <option value="pending">Pending</option>
+            <option value="completed">Completed</option>
+          </select>
+
+          {/* Payment Status Filter */}
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent text-sm text-gray-800"
+          >
+            <option value="all">All Payment Status</option>
+            <option value="confirmed">Confirmed</option>
+            <option value="pending">Pending</option>
+            <option value="cancelled">Cancelled</option>
+          </select>
         </div>
         
         {/* Total Count Display */}
@@ -400,7 +473,8 @@ const BookingList: React.FC<BookingListProps> = ({ viewMode = 'table', bookingTy
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Temple</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date & Time</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Chadawa Status</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Payment Status</th>
                 <th className="relative px-6 py-3"><span className="sr-only">Actions</span></th>
               </tr>
             </thead>
@@ -420,20 +494,42 @@ const BookingList: React.FC<BookingListProps> = ({ viewMode = 'table', bookingTy
                   </td>
                   <td className="px-6 py-4">
                     <div className="text-sm text-gray-900">{booking.temple?.name || booking.puja?.name || 'N/A'}</div>
-                    <div className="text-xs text-gray-500">
-                      {booking.plan ? `Plan: ${booking.plan.name}` : 'No Plan'}
-                    </div>
+                    {/* <div className="text-xs text-gray-500">
+                      {booking.plan ? `Plan: ${booking.plan.name}` : ''}
+                    </div> */}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-sm text-gray-900">{formatDate(booking.booking_date)}</div>
-                    <div className="text-xs text-gray-500">
+                    {/* <div className="text-xs text-gray-500">
                       {booking.puja?.time || 'N/A'}
+                    </div> */}
+                  </td>
+                  <td className="px-6 py-4">
+                    <div className="text-sm font-medium text-gray-900">
+                      {booking.booking_chadawas && booking.booking_chadawas.length > 0 ? (
+                        <div className="space-y-1">
+                          {booking.booking_chadawas.map((item, idx) => (
+                            <div key={idx} className="flex justify-between items-center gap-4">
+                              <span className="text-xs text-gray-600">{item.chadawa.name}:</span>
+                              <span className="text-sm">{formatCurrency(item.chadawa.price)}</span>
+                            </div>
+                          ))}
+                          {booking.booking_chadawas.length > 1 && (
+                            <div className="flex justify-between items-center pt-1 border-t border-gray-200">
+                              <span className="text-xs font-semibold text-gray-700">Total:</span>
+                              <span className="font-bold">{formatCurrency(calculateChadawasTotal(booking.booking_chadawas).toString())}</span>
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <span className="text-gray-400">No chadawas</span>
+                      )}
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm font-medium text-gray-900">
-                      {booking.plan ? formatCurrency(booking.plan.actual_price) : 'N/A'}
-                    </div>
+                    <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getChadawaStatusBadgeClass(booking.chadawa_status)}`}>
+                      {booking.chadawa_status.charAt(0).toUpperCase() + booking.chadawa_status.slice(1)}
+                    </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusBadgeClass(booking.status)}`}>
@@ -442,6 +538,15 @@ const BookingList: React.FC<BookingListProps> = ({ viewMode = 'table', bookingTy
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                     <div className="flex space-x-2">
+                      <button
+                        onClick={(e) => { e.stopPropagation(); handleToggleChadawaStatus(booking.id); }}
+                        className="text-blue-600 hover:text-blue-900 p-1 rounded hover:bg-blue-50"
+                        title="Toggle Chadawa Status"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                      </button>
                       <button
                         onClick={(e) => { e.stopPropagation(); onViewModalOpen(booking.id, booking); }}
                         disabled={isLoadingView}
