@@ -3,31 +3,18 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { RootState } from '@/store';
-import { fetchOrders } from '../../../../store/slices/orderSlice';
+import { fetchOrders, Order } from '../../../../store/slices/orderSlice';
+import { axiosInstance } from '@/services/apiConfig';
 import type { AppDispatch } from '@/store';
-
-interface Order {
-  id: number;
-  user_id: number;
-  order_number: string;
-  total_amount: string;
-  status: string;
-  payment_status: string;
-  created_at: string;
-  user?: {
-    name: string;
-    email: string;
-    mobile: string;
-  };
-}
 
 const OrderList: React.FC = () => {
   const dispatch = useDispatch<AppDispatch>();
   const { orders: rawOrders, isLoading } = useSelector((state: RootState) => state.order || { orders: null, isLoading: false });
   
-  // UI state
-  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [statusFilter, setStatusFilter] = useState<string>('all'); // Order status filter
+  const [paymentStatusFilter, setPaymentStatusFilter] = useState<string>('all'); // Payment status filter
   const [currentPage, setCurrentPage] = useState<number>(1);
+  const [usersCache, setUsersCache] = useState<Record<number, any>>({}); // Cache for user data
   const itemsPerPage = 10;
 
   // Transform raw orders
@@ -53,6 +40,7 @@ const OrderList: React.FC = () => {
               email: (o.user.email ?? '').toString().trim(),
               mobile: (o.user.mobile ?? '').toString().trim(),
             } : undefined,
+            order_items: Array.isArray(o?.order_items) ? o.order_items : [],
           } as Order;
         } catch (error) {
           console.error('Error transforming order data:', error, o);
@@ -69,19 +57,64 @@ const OrderList: React.FC = () => {
       });
   }, [rawOrders]);
 
+  // Fetch user details for orders
+  useEffect(() => {
+    const fetchUserDetails = async () => {
+      const userIds = Array.from(new Set(orders.map(o => o.user_id).filter(id => id && !usersCache[id])));
+      
+      if (userIds.length === 0) return;
+
+      try {
+        const userPromises = userIds.map(userId =>
+          axiosInstance.get(`/api/v1/users/${userId}`)
+            .then((response: any) => ({ userId, data: response.data }))
+            .catch((error: any) => {
+              console.error(`Failed to fetch user ${userId}:`, error);
+              return { userId, data: null };
+            })
+        );
+
+        const userResults = await Promise.all(userPromises);
+        const newUsersCache = { ...usersCache };
+        
+        userResults.forEach(({ userId, data }: { userId: number; data: any }) => {
+          if (data) {
+            newUsersCache[userId] = data;
+          }
+        });
+
+        setUsersCache(newUsersCache);
+      } catch (error) {
+        console.error('Error fetching user details:', error);
+      }
+    };
+
+    fetchUserDetails();
+  }, [orders]);
+
+  // Transform orders with user data from cache
+  const ordersWithUsers = useMemo(() => {
+    return orders.map(order => ({
+      ...order,
+      user: usersCache[order.user_id] || order.user
+    }));
+  }, [orders, usersCache]);
+
   // Filter orders
   const filteredOrders = useMemo(() => {
-    return orders
+    return ordersWithUsers
       .filter((o) => {
-        if (statusFilter === 'all') return true;
-        return o.status === statusFilter;
+        if (statusFilter === 'all' && paymentStatusFilter === 'all') return true;
+        const statusMatch = statusFilter === 'all' || o.status === statusFilter;
+        const paymentMatch = paymentStatusFilter === 'all' || o.payment_status === paymentStatusFilter;
+        return statusMatch && paymentMatch;
       })
       .sort((a, b) => {
         const dateA = new Date(a.created_at).getTime();
         const dateB = new Date(b.created_at).getTime();
         return dateB - dateA; // newest first
       });
-  }, [orders, statusFilter]);
+  }, [ordersWithUsers, statusFilter, paymentStatusFilter]);
 
   // Pagination
   const totalPages = Math.max(1, Math.ceil(filteredOrders.length / itemsPerPage));
@@ -93,7 +126,7 @@ const OrderList: React.FC = () => {
   // Reset page on filter change
   useEffect(() => {
     setCurrentPage(1);
-  }, [statusFilter]);
+  }, [statusFilter, paymentStatusFilter]);
 
   // Fetch orders on component mount
   useEffect(() => {
@@ -177,18 +210,32 @@ const OrderList: React.FC = () => {
     <>
       {/* Filters */}
       <div className="flex flex-wrap gap-4 mb-6 p-4 bg-gray-50 rounded-lg">
+        {/* Order Status Filter */}
         <select
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value)}
           className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent text-sm text-gray-800"
         >
-          <option value="all">All Status</option>
+          <option value="all">All Order Status</option>
           <option value="pending">Pending</option>
           <option value="processing">Processing</option>
           <option value="shipped">Shipped</option>
           <option value="delivered">Delivered</option>
           <option value="completed">Completed</option>
           <option value="cancelled">Cancelled</option>
+        </select>
+
+        {/* Payment Status Filter */}
+        <select
+          value={paymentStatusFilter}
+          onChange={(e) => setPaymentStatusFilter(e.target.value)}
+          className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent text-sm text-gray-800"
+        >
+          <option value="all">All Payment Status</option>
+          <option value="paid">Paid</option>
+          <option value="pending">Pending</option>
+          <option value="failed">Failed</option>
+          <option value="refunded">Refunded</option>
         </select>
       </div>
 
@@ -200,10 +247,11 @@ const OrderList: React.FC = () => {
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Order ID</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Customer</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Products</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Payment</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Order Status</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Payment Status</th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
@@ -217,10 +265,26 @@ const OrderList: React.FC = () => {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-sm font-medium text-gray-900">
-                      {order.user?.name || 'N/A'}
+                      {order.user?.name || `User ID: ${order.user_id}`}
                     </div>
                     <div className="text-sm text-gray-500">
-                      {order.user?.email || order.user?.mobile || 'N/A'}
+                      {order.user?.email || order.user?.mobile || `ID: ${order.user_id}`}
+                    </div>
+                  </td>
+                  <td className="px-6 py-4">
+                    <div className="text-sm text-gray-900 max-w-xs">
+                      {order.order_items && order.order_items.length > 0 ? (
+                        <div className="space-y-1">
+                          {order.order_items.map((item: any, idx: number) => (
+                            <div key={idx} className="flex items-center gap-2">
+                              <span className="font-medium">{item.product_name}</span>
+                              <span className="text-xs text-gray-500">×{item.quantity}</span>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <span className="text-gray-400">No products</span>
+                      )}
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">

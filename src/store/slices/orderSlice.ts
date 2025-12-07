@@ -1,6 +1,18 @@
 import { createSlice, PayloadAction, createAsyncThunk } from '@reduxjs/toolkit';
 import { axiosInstance } from '@/services/apiConfig';
 
+// Define OrderItem type
+export interface OrderItem {
+  id: number;
+  order_id: number;
+  product_id: number;
+  product_name: string;
+  quantity: number;
+  unit_price: string;
+  total_price: string;
+  created_at: string;
+}
+
 // Define Order type based on API response
 export interface Order {
   id: number;
@@ -15,6 +27,7 @@ export interface Order {
     email: string;
     mobile: string;
   };
+  order_items?: OrderItem[];
 }
 
 // Define OrderState type
